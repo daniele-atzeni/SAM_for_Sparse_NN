@@ -6,7 +6,7 @@ import pandas as pd
 
 from src.data import get_cifar10_loaders, get_mnist_loaders
 from src.models import WideResNet16_8, SimpleNN
-from src.train.eval import evaluate
+from src.eval.eval import evaluate
 
 
 #dataset = "cifar10"

@@ -11,7 +11,7 @@ from src.models import *
 from src.data import get_mnist_loaders, get_fashion_mnist_loaders, get_cifar10_loaders, get_cifar100_loaders
 from src.train.lr_scheduler import MultiStepLR
 
-from src.train.eval import evaluate
+from src.eval.eval import evaluate
 
 
 MODEL_NAME_TO_CLASS = {

@@ -1,0 +1,31 @@
+{
+    "model": {
+        "name": "ResNet18",
+        "parameters": {
+            "num_classes": 10
+        }
+    },
+    "training": {
+        "learning_rate": 0.1,
+        "epochs": 180,
+        "optimizer": "sgd", 
+        "loss_function": "cross_entropy",
+        "scheduler": {
+            "type": "MultiStepLR",
+            "step_size": [80, 160],
+            "gamma": 0.1
+        },
+        "weight_decay": 0.0001,
+        "momentum": 0.9,
+        "rho": 0.5
+    },
+    "dataset": {
+        "name": "cifar10",
+        "batch_size": 128
+    },
+    "save_every": 180,
+    "first_iter": 15,
+    "prune_every": 10,
+    "prune_ratio": 0.9,
+    "n_iter": 5
+}

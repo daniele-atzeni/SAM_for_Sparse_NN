@@ -1,0 +1,93 @@
+# ========================
+# Python
+# ========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+build/
+dist/
+*.egg
+
+# Virtual environments
+venv/
+.env/
+.envrc/
+.venv/
+pip-wheel-metadata/
+
+# ========================
+# PyTorch / ML artifacts
+# ========================
+# Model checkpoints & weights
+*.pt
+*.pth
+*.ckpt
+*.onnx
+
+# Training outputs
+runs/              # torch.utils.tensorboard, wandb local runs
+checkpoints/
+logs/
+outputs/
+results/
+
+# Datasets (usually too large for git)
+data/
+dataset/
+datasets/
+
+# Caches
+.cache/
+torch_cache/
+*.npy
+*.npz
+
+# ========================
+# Experiment tracking
+# ========================
+# TensorBoard
+events.out.tfevents.*
+
+# Weights & Biases
+wandb/
+
+# MLflow
+mlruns/
+
+# ========================
+# Jupyter
+# ========================
+.ipynb_checkpoints/
+*.nbconvert.ipynb
+
+# ========================
+# IDEs & Editors
+# ========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ========================
+# OS files
+# ========================
+.DS_Store
+Thumbs.db
+
+# ========================
+# Testing & coverage
+# ========================
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ========================
+# Config / secrets
+# ========================
+*.env
+secrets.yaml
+secrets.json

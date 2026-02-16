@@ -1,3 +1,6 @@
+import os
+import tempfile
+
 import torch
 from torch import nn
 
@@ -5,8 +8,10 @@ import torch.nn.utils.prune as prune
 
 from torch.utils.tensorboard import SummaryWriter
 
+from src.models.mlp import MLP
+
 from .SAM import SAM, disable_running_stats, enable_running_stats
-from .eval import evaluate
+from ..eval.eval import evaluate
 
 
 def train_epoch(
@@ -15,7 +20,8 @@ def train_epoch(
         train_loader: torch.utils.data.DataLoader, 
         optimizer: torch.optim.Optimizer, 
         epoch: int, 
-        criterion: nn.Module
+        criterion: nn.Module,
+        log_every: int = 100
         ) -> dict:
     
     model.train()
@@ -51,7 +57,7 @@ def train_epoch(
             loss.backward()
             optimizer.step()
 
-        if batch_idx % 100 == 0:
+        if batch_idx % log_every == 0:
             print(
                 f"Train Epoch: {epoch} [{batch_idx * len(data)}/{len(train_loader.dataset)} ({100. * batch_idx / len(train_loader):.0f}%)]\tLoss: {loss.item():.6f}\tSAM Loss: {sam_loss.item() if isinstance(optimizer, SAM) else 'N/A'}   "
             )
@@ -82,9 +88,12 @@ def train_loop(
         SGD_optimizer: torch.optim.Optimizer,
         SAM_optimizer: SAM,
         criterion: nn.Module,
-        scheduler = lambda optim, epoch: None,
-        tensorboard_log_dir: str = "runs/exp1",
-        first_epoch: int = 0
+        scheduler = None,
+        tensorboard_log_dir: str = "runs/exp",
+        first_epoch: int = 0,
+        log_every: int = 100,
+        checkpoint_folder: str = "./checkpoint",
+        save_every: int = 100
         ):
     
     assert use_sam and SAM_optimizer is not None or not use_sam and SGD_optimizer is not None, \
@@ -106,9 +115,9 @@ def train_loop(
 
     for epoch in range(first_epoch + 1, first_epoch + epochs + 1):
         if not use_sam:
-            train_metrics = train_epoch(model, device, train_loader, SGD_optimizer, epoch, criterion)
+            train_metrics = train_epoch(model, device, train_loader, SGD_optimizer, epoch, criterion, log_every=log_every)
         else:
-            train_metrics = train_epoch(model, device, train_loader, SAM_optimizer, epoch, criterion)
+            train_metrics = train_epoch(model, device, train_loader, SAM_optimizer, epoch, criterion, log_every=log_every)
         #train_metrics = evaluate(model, device, train_loader, criterion)
         eval_metrics = evaluate(model, device, test_loader, criterion)
 
@@ -129,8 +138,14 @@ def train_loop(
                 print(f"  Test {name}: {value:.4f}")
 
         # update the scheduler
-        scheduler(SGD_optimizer, epoch)
-        scheduler(SAM_optimizer, epoch)
+        if scheduler:
+            scheduler(SGD_optimizer, epoch)
+            scheduler(SAM_optimizer, epoch)
+        
+        # save the model
+        if epoch % save_every == 0:
+            model_path = os.path.join(checkpoint_folder, f"sam_{use_sam}_epoch_{epoch}.pth")
+            torch.save(model.state_dict(), model_path)
 
     writer.close()
 
@@ -149,14 +164,30 @@ def train_prune_loop(
         first_iter: int,
         prune_every: int,
         n_iter: int,
-        scheduler = lambda optim, epoch: None,
-        tensorboard_log_dir: str = "runs/exp1"
+        scheduler = None,
+        tensorboard_log_dir: str = "runs/exp1",
+        log_every: int = 100,
+        checkpoint_folder: str = "./checkpoint",
+        save_every: int = 100,
+        first_epoch: int = 0
         ):
     
     assert use_sam and SAM_optimizer is not None or not use_sam and SGD_optimizer is not None, \
         "Optimizer configuration does not match use_sam flag."
 
     writer = SummaryWriter(log_dir=tensorboard_log_dir)
+
+    # evaluate before training
+    eval_metrics = evaluate(model, device, test_loader, criterion)
+    # log metrics to TensorBoard
+    for name, value in eval_metrics.items():
+        if value is not None:
+            writer.add_scalar(f"{name}/test", value, first_epoch)
+    # print metrics
+    print(f"Epoch {first_epoch}:")
+    for name, value in eval_metrics.items():
+        if value is not None:
+                print(f"  Test {name}: {value:.4f}")
 
     iter_ratio = 1 - (1 - prune_ratio) ** (1 / n_iter)
     #iter_epochs = epochs // n_iter
@@ -186,9 +217,9 @@ def train_prune_loop(
             writer.add_scalar(f"sparsity", 100. * total_zeros / total_params, epoch)
 
         if not use_sam:
-            train_metrics = train_epoch(model, device, train_loader, SGD_optimizer, epoch, criterion)
+            train_metrics = train_epoch(model, device, train_loader, SGD_optimizer, epoch, criterion, log_every=log_every)
         else:
-            train_metrics = train_epoch(model, device, train_loader, SAM_optimizer, epoch, criterion)
+            train_metrics = train_epoch(model, device, train_loader, SAM_optimizer, epoch, criterion, log_every=log_every)
         #train_metrics = evaluate(model, device, train_loader, criterion)
         eval_metrics = evaluate(model, device, test_loader, criterion)
 
@@ -201,7 +232,26 @@ def train_prune_loop(
                 writer.add_scalar(f"{name}/test", value, epoch)
 
         # update the scheduler
-        scheduler(SGD_optimizer, epoch)
-        scheduler(SAM_optimizer, epoch)
+        if scheduler:
+            scheduler(SGD_optimizer, epoch)
+            scheduler(SAM_optimizer, epoch)
+        
+        # save the model with a tmp file
+        if epoch % save_every == 0:
+            model_path = os.path.join(checkpoint_folder, f"sam_{use_sam}_epoch_{epoch}.pth")
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pt") as tmp:
+                tmp_path = tmp.name
+            torch.save(model, tmp_path)
+
+            model_copy = torch.load(tmp_path, map_location="cpu", weights_only=False)
+            for m in model_copy.modules():
+                if hasattr(m, "weight_orig"):
+                    prune.remove(m, "weight")
+
+            torch.save(model_copy.state_dict(), model_path)
+
+            # cleanup
+            del model_copy
+            os.remove(tmp_path)
 
     writer.close()

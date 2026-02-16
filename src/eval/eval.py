@@ -2,7 +2,7 @@ import torch
 from torch import nn
 import numpy as np
 
-from PyHessian.pyhessian import hessian
+from src.pyhessian import hessian
 
 
 import torch

@@ -15,7 +15,7 @@ from src.train.lr_scheduler import MultiStepLR
 
 MODEL_NAME_TO_CLASS = {
     # Simple NN
-    "SimpleNN": SimpleNN,
+    "MLP": MLP,
     # ResNet Plus
     "ResNet20": ResNet20,
     "ResNet32": ResNet32,
@@ -49,6 +49,8 @@ MODEL_NAME_TO_CLASS = {
     # Wide ResNet
     "WideResNet16_8": WideResNet16_8,
     "WideResNet28_10": WideResNet28_10,
+    # Vision Transformer
+    "ViT": ViT,
 }
 
 
