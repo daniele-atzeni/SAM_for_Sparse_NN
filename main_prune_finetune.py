@@ -8,11 +8,12 @@ import torch.nn.utils.prune as prune
 
 from src.train.SAM import SAM
 from src.train.training import train_loop, train_prune_loop
+from torch.utils.tensorboard import SummaryWriter
 from src.models import *
 from src.data import get_mnist_loaders, get_fashion_mnist_loaders, get_cifar10_loaders, get_cifar100_loaders
 from src.train.lr_scheduler import CosineAnnealingLR, MultiStepLR, WarmupCosineAnnealingLR
 
-from src.eval.eval import evaluate
+from src.eval.eval import evaluate, post_pruning_metrics, weight_distribution_metrics
 
 
 MODEL_NAME_TO_CLASS = {
@@ -144,6 +145,12 @@ if __name__ == "__main__":
                     if value is not None:
                         print(f"  Test {name}: {value:.4f}")
 
+                # Pre-pruning weight distribution (Proposition 6: L1/L2 ratio & Gini for dense model)
+                pre_prune_dist = weight_distribution_metrics(model)
+                print("Pre-pruning weight distribution: " + ", ".join(
+                    f"{k}: {v:.6f}" for k, v in pre_prune_dist.items()
+                ))
+
                 parameters_to_prune = [
                     (module, "weight")
                     for _, module in model.named_modules()
@@ -154,6 +161,19 @@ if __name__ == "__main__":
                     pruning_method=prune.L1Unstructured,
                     amount=pruning_ratio,
                 )
+
+                # Post-pruning metrics: masked gradient norm + weight distribution (Propositions 3 & 6)
+                post_prune = post_pruning_metrics(model, device, train_loader, criterion)
+                print("Post-pruning metrics: " + ", ".join(
+                    f"{k}: {v:.6f}" for k, v in post_prune.items()
+                ))
+
+                # Log pre/post pruning metrics to TensorBoard at step=dense_epochs
+                with SummaryWriter(log_dir=tensorboard_log_dir) as pre_writer:
+                    for k, v in pre_prune_dist.items():
+                        pre_writer.add_scalar(f"{k}/pre_pruning", v, dense_epochs)
+                    for k, v in post_prune.items():
+                        pre_writer.add_scalar(f"{k}/post_pruning", v, dense_epochs)
 
                 if optimizer_name == "sgd":
                     weight_decay = config["training"].get("weight_decay", 1e-4)

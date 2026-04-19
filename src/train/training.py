@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 from src.models.mlp import MLP
 
 from .SAM import SAM, disable_running_stats, enable_running_stats
-from ..eval.eval import evaluate
+from ..eval.eval import evaluate, post_pruning_metrics, weight_distribution_metrics
 
 
 def train_epoch(
@@ -221,6 +221,12 @@ def train_prune_loop(
                     print(f"  Layer {module}: {zeros}/{params} ({100. * zeros / params:.2f}%)")
             print(f"  Total: {total_zeros}/{total_params} ({100. * total_zeros / total_params:.2f}%)")
             writer.add_scalar(f"sparsity", 100. * total_zeros / total_params, epoch)
+
+            # Post-pruning metrics: masked gradient norm + weight distribution (Propositions 3 & 6)
+            post_prune = post_pruning_metrics(model, device, train_loader, criterion)
+            for name, value in post_prune.items():
+                writer.add_scalar(f"{name}/post_pruning", value, epoch)
+            print("Post-pruning metrics: " + ", ".join(f"{k}: {v:.6f}" for k, v in post_prune.items()))
 
         if not use_sam:
             train_metrics = train_epoch(model, device, train_loader, SGD_optimizer, epoch, criterion, log_every=log_every)

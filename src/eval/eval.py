@@ -101,6 +101,132 @@ def random_restore_fixed_norm(model, noises, scale):
             p.sub_(noise * scale)
 
 
+def _build_param_masks(model, device):
+    """List of masks aligned with model.parameters() order (ones where no pruning)."""
+    masks = []
+    for module in model.modules():
+        for name, param in module.named_parameters(recurse=False):
+            if not param.requires_grad:
+                continue
+            mask_name = name.replace('weight', 'weight_mask').replace('bias', 'bias_mask')
+            if hasattr(module, mask_name):
+                masks.append(getattr(module, mask_name).to(device))
+            else:
+                masks.append(torch.ones_like(param, device=device))
+    return masks
+
+
+@torch.no_grad()
+def weight_distribution_metrics(model) -> dict:
+    """L1/L2 ratio, Gini coefficient, pruned weight norm (Propositions 3 & 6).
+
+    Only considers weight tensors (not biases or BN affine params) so that the
+    metrics reflect the pruned coordinate structure.
+    """
+    active_w, pruned_w = [], []
+    for module in model.modules():
+        for name, param in module.named_parameters(recurse=False):
+            if 'weight' not in name:
+                continue
+            if hasattr(module, 'weight_mask'):
+                mask = module.weight_mask.bool()
+                w = param.detach()
+                active_w.append(w[mask].flatten())
+                pruned_w.append(w[~mask].flatten())
+            else:
+                active_w.append(param.detach().flatten())
+
+    active = torch.cat(active_w) if active_w else torch.zeros(1)
+    pruned = torch.cat(pruned_w) if pruned_w else torch.zeros(1)
+
+    l1 = active.abs().sum().item()
+    l2 = active.norm(2).item()
+    l1_l2_ratio = l1 / (l2 + 1e-12)
+
+    # Gini coefficient — higher means more weight concentrated on fewer params (SAM prediction)
+    w_np = np.sort(active.abs().cpu().numpy())
+    n = len(w_np)
+    if n > 0 and w_np.sum() > 0:
+        idx = np.arange(1, n + 1)
+        gini = float((2 * (idx * w_np).sum() / (n * w_np.sum())) - (n + 1) / n)
+    else:
+        gini = 0.0
+
+    return {
+        "l1_l2_ratio": l1_l2_ratio,
+        "gini": gini,
+        "pruned_weight_norm": pruned.norm(2).item(),
+        "active_weight_count": int(active.numel()),
+    }
+
+
+def post_pruning_metrics(model, device, data_loader, criterion) -> dict:
+    """Masked gradient norm + weight distribution immediately after pruning.
+
+    Computes ||P_m^T ∇L(θ^(m))|| and ||(1-m)⊙θ*|| (Proposition 3) plus the
+    weight distribution metrics for Proposition 6.  Call this before any
+    retraining after a pruning step.
+    """
+    model.eval()
+
+    data, target = next(iter(data_loader))
+    data, target = data.to(device), target.to(device)
+
+    model.zero_grad()
+    output = model(data)
+    loss = criterion(output, target).mean()
+    loss.backward()
+
+    norms = []
+    for module in model.modules():
+        for name, param in module.named_parameters(recurse=False):
+            if param.grad is None:
+                continue
+            mask_name = name.replace('weight', 'weight_mask').replace('bias', 'bias_mask')
+            if hasattr(module, mask_name):
+                g = param.grad * getattr(module, mask_name)
+            else:
+                g = param.grad
+            norms.append(g.norm(2))
+
+    grad_norm = torch.norm(torch.stack(norms), 2).item() if norms else 0.0
+    model.zero_grad()
+
+    dist = weight_distribution_metrics(model)
+    return {"masked_grad_norm": grad_norm, **dist}
+
+
+def eigenvector_alignment(model, device, data_loader, n_batch: int = 1) -> float:
+    """||P_m^T v1||^2: mass of the full Hessian top eigenvector on active coords.
+
+    Computes the top eigenvector of the *full* (unmasked) Hessian and measures
+    what fraction of its squared norm lies on the active (unpruned) coordinates.
+    Close to 1 means the dominant curvature direction is preserved by the mask.
+    """
+    loss_fn = nn.CrossEntropyLoss(reduction="sum")
+
+    for param in model.parameters():
+        if param.grad is not None:
+            param.grad.zero_()
+
+    v1 = None
+    for batch_idx, (inputs, targets) in enumerate(data_loader):
+        inputs, targets = inputs.to(device), targets.to(device)
+        cuda = device.type == 'cuda' if isinstance(device, torch.device) else ('cuda' in device)
+        hessian_comp = hessian(model, loss_fn, data=(inputs, targets), cuda=cuda)
+        _, batch_eigvecs = hessian_comp.eigenvalues(top_n=1)
+        v1 = batch_eigvecs[0]
+        if batch_idx == n_batch - 1:
+            break
+
+    if v1 is None:
+        return 0.0
+
+    masks = _build_param_masks(model, v1[0].device)
+    sq_norm = sum((v1_i * m).pow(2).sum().item() for v1_i, m in zip(v1, masks))
+    return float(sq_norm)
+
+
 def hessian_flatness(
         device: str | torch.device,
         model: nn.Module,
@@ -158,16 +284,32 @@ def hessian_flatness(
     trace = trace / (batch_idx + 1)
     eigenvals = [eigval / (batch_idx + 1) for eigval in eigenvals]
 
+    # Count active parameters via module-level mask access (parameter-level .weight_mask
+    # does not exist for torch.nn.utils.prune — masks live on the module as buffers).
+    count_total = 0   # all active params (including biases / BN affine)
+    count_weights = 0  # active weight-only params (the pruned coordinate subspace)
+    for module in model.modules():
+        for name, param in module.named_parameters(recurse=False):
+            if not param.requires_grad:
+                continue
+            mask_name = name.replace('weight', 'weight_mask').replace('bias', 'bias_mask')
+            if pruned and hasattr(module, mask_name):
+                active = int(getattr(module, mask_name).sum().item())
+            else:
+                active = param.numel()
+            count_total += active
+            if 'weight' in name and 'bias' not in name:
+                count_weights += active
 
-    # compute trace for non-pruned parameters
-    count = 0
-    for p in model.parameters():
-        if pruned and hasattr(p, "weight_mask"):
-            count += p.weight_mask.sum().item()
-        else:
-            count += p.numel()
-    trace_per_param = trace / count
-    return_dict ={"trace": trace, "trace_per_param": trace_per_param}
+    trace_per_param = trace / (count_total + 1e-8)
+    # tr(H_m)/k where k = active weight params only (Propositions 1 & 2)
+    trace_per_active_weight = trace / (count_weights + 1e-8)
+
+    return_dict = {
+        "trace": trace,
+        "trace_per_param": trace_per_param,
+        "trace_per_active_weight": trace_per_active_weight,
+    }
     for idx, eigval in enumerate(eigenvals):
         return_dict[f"eigval_{idx}"] = eigval
     return return_dict
