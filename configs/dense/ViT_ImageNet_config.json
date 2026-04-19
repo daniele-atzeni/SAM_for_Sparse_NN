@@ -1,0 +1,40 @@
+{
+    "model": {
+        "name": "ViT",
+        "parameters": {
+            "image_size": 224,
+            "patch_size": 16,
+            "num_classes": 100,
+            "dim": 384,
+            "depth": 12,
+            "heads": 6,
+            "mlp_dim": 1536,
+            "pool": "cls",
+            "channels": 3,
+            "dim_head": 64,
+            "dropout": 0.1,
+            "emb_dropout": 0.1
+        }
+    },
+    "training": {
+        "learning_rate": 0.001,
+        "epochs": 300,
+        "optimizer": "adamw",
+        "loss_function": "cross_entropy",
+        "scheduler": {
+            "type": "WarmupCosineAnnealingLR",
+            "T_max": 300,
+            "warmup_epochs": 20
+        },
+        "weight_decay": 0.05,
+        "rho": 0.05
+    },
+    "dataset": {
+        "name": "ImageNet",
+        "root": "/home/datzeni/SAM_for_Sparse_NN/src/data/DATA/Imagenet_imagefolder",
+        "batch_size": 32
+    },
+    "save_every": 10,
+    "evaluate_flatness_every": 10,
+    "eval_batches": 5
+}

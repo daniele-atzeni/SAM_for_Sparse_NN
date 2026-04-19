@@ -1,3 +1,4 @@
+import json
 import os
 
 import torch
@@ -9,14 +10,14 @@ from src.train.SAM import SAM
 from src.train.training import train_loop, train_prune_loop
 from src.models import *
 from src.data import get_mnist_loaders, get_fashion_mnist_loaders, get_cifar10_loaders, get_cifar100_loaders
-from src.train.lr_scheduler import MultiStepLR
+from src.train.lr_scheduler import CosineAnnealingLR, MultiStepLR, WarmupCosineAnnealingLR
 
 from src.eval.eval import evaluate
 
 
 MODEL_NAME_TO_CLASS = {
     # Simple NN
-    "SimpleNN": SimpleNN,
+    "MLP": MLP,
     # ResNet Plus
     "ResNet20": ResNet20,
     "ResNet32": ResNet32,
@@ -50,100 +51,183 @@ MODEL_NAME_TO_CLASS = {
     # Wide ResNet
     "WideResNet16_8": WideResNet16_8,
     "WideResNet28_10": WideResNet28_10,
+    # Vision Transformer
+    "ViT": ViT,
 }
+
+DATASET_NAME_TO_LOADER = {
+    "MNIST": get_mnist_loaders,
+    "fashionMNIST": get_fashion_mnist_loaders,
+    "cifar10": get_cifar10_loaders,
+    "cifar100": get_cifar100_loaders
+}
+
+def build_scheduler(learning_rate: float, training_config: dict):
+    scheduler_name = training_config.get("scheduler", {}).get("type")
+    if scheduler_name == "MultiStepLR":
+        step_size = training_config["scheduler"]["step_size"]
+        gamma = training_config["scheduler"]["gamma"]
+        return MultiStepLR(learning_rate, step_size, gamma=gamma)
+    if scheduler_name == "CosineAnnealingLR":
+        t_max = training_config["scheduler"]["T_max"]
+        return CosineAnnealingLR(learning_rate, T_max=t_max)
+    if scheduler_name == "WarmupCosineAnnealingLR":
+        t_max = training_config["scheduler"]["T_max"]
+        warmup_epochs = training_config["scheduler"]["warmup_epochs"]
+        return WarmupCosineAnnealingLR(learning_rate, T_max=t_max, warmup_epochs=warmup_epochs)
+    return None
 
 
 if __name__ == "__main__":
-    # 1. Hyperparameters
-    BATCH_SIZE = 64
-    LEARNING_RATE = 0.05
-    EPOCHS = 5
-    PRUNE_RATIOS = [0.5, 0.7, 0.9]
-    STEP_SIZE = [80, 160]
-    SCHEDULER = MultiStepLR(LEARNING_RATE, STEP_SIZE, gamma=0.1)
-    CRITERION = nn.CrossEntropyLoss()
-    DATASET_NAMES = ["cifar10"]
-    # model
-    MODEL_NAMES = ["vgg16_bn", "ResNet18", "WideResNet16_8"]
-    MODEL_PARAMS = {}
+    
+    CONFIG_PATH = "/home/datzeni/SAM_for_Sparse_NN/configs/finetune/MLP_MNIST_config.json"
+    config = json.load(open(CONFIG_PATH, "r"))
 
-    MODE = "dense"  # "dense"
-    MODEL_SAVE_PATH = f"./src/saved_models"
+    dataset_name = config["dataset"]["name"]
+    batch_size = config["dataset"]["batch_size"]
+    train_loader, test_loader = DATASET_NAME_TO_LOADER[dataset_name](batch_size=batch_size)
 
-    for model_name in MODEL_NAMES:
-        TENSORBOARD_MAIN_LOG_DIR = f"./src/tensorboard/runs/{model_name}"
+    model_name = config["model"]["name"]
+    model_params = config["model"]["parameters"]
+    dense_model_dir = os.path.join(".", "saved_models", "dense", f"{model_name}_{dataset_name}")
+    dense_epochs = config["training"]["dense_epochs"]
+    finetune_epochs = config["training"]["finetune_epochs"]
+    pruning_ratios = config["pruning_ratios"]
+    use_sams = [False, True]
 
-        for dataset_name in DATASET_NAMES:
-            for prune_ratio in PRUNE_RATIOS:
-                for sam_train in [True, False]:
-                    for sam_finetune in [True, False]:
-                        print(f"\n\nFine-tuning {model_name} on {dataset_name} | Orig train SAM: {sam_train} | Fine-tune SAM: {sam_finetune} | Prune Ratio: {prune_ratio}\n")
-                
-                        tensorboard_log_dir = TENSORBOARD_MAIN_LOG_DIR + f"/{dataset_name}_{sam_train}_{sam_finetune}_{prune_ratio}"
+    learning_rate = config["training"]["learning_rate"]
+    optimizer_name = config["training"]["optimizer"]
+    scheduler = build_scheduler(learning_rate, config["training"])
+    evaluate_flatness_every = 1
 
-                        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    criterion_name = config["training"]["loss_function"]
+    if criterion_name == "cross_entropy":
+        criterion = nn.CrossEntropyLoss()
+    else:
+        raise ValueError(f"Unsupported loss function: {criterion_name}")
 
-                        if dataset_name == "MNIST":
-                            train_loader, test_loader = get_mnist_loaders(batch_size=BATCH_SIZE)
-                        elif dataset_name == "fashionMNIST":
-                            train_loader, test_loader = get_fashion_mnist_loaders(batch_size=BATCH_SIZE)
-                        elif dataset_name == "cifar10":
-                            train_loader, test_loader = get_cifar10_loaders(batch_size=BATCH_SIZE)
-                        elif dataset_name == "cifar100":
-                            train_loader, test_loader = get_cifar100_loaders(batch_size=BATCH_SIZE)
-                        else:
-                            raise ValueError(f"Unsupported dataset: {dataset_name}")
-                
-                        ###
-                        if dataset_name in ["cifar10", "MNIST", "fashionMNIST"]:
-                            num_classes = 10
-                        elif dataset_name == "cifar100":
-                            num_classes = 100
-                        MODEL_PARAMS.update({"num_classes": num_classes})
-                        ###
-                        model = MODEL_NAME_TO_CLASS[model_name](**MODEL_PARAMS).to(device)
-                        print("Loading trained model...")
-                        trained_model_path = f"{MODEL_SAVE_PATH}/{model_name}_{dataset_name}_hiddenNone_sam{sam_train}_prune0.pth"
-                        model.load_state_dict(torch.load(trained_model_path))
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-                        SGD_optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE)
-                        SAM_optimizer = SAM(
-                                filter(lambda p: p.requires_grad, model.parameters()), optim.SGD,
-                                rho=0.5, adaptive=False, lr=LEARNING_RATE,
-                                weight_decay=1e-4, momentum=0.9
-                            )
+    for pruning_ratio in pruning_ratios:
+        finetune_model_dir = os.path.join(
+            ".",
+            "saved_models",
+            f"prune_finetune",
+            f"{model_name}_{dataset_name}_prune_ratio_{pruning_ratio}",
+        )
+        tensorboard_root = os.path.join(
+            ".",
+            "tensorboard",
+            f"runs_prune_finetune",
+            f"{model_name}_{dataset_name}_prune_ratio_{pruning_ratio}",
+        )
+        
+        for sam_train in use_sams:
+            trained_model_path = os.path.join(dense_model_dir, f"{model_name}_{dataset_name}_sam_{sam_train}.pth")
+            if not os.path.exists(trained_model_path):
+                raise FileNotFoundError(f"Missing dense checkpoint: {trained_model_path}")
+            
+            for sam_finetune in use_sams:
+                print(
+                    f"\n\nFine-tuning {model_name} on {dataset_name} | "
+                    f"Orig train SAM: {sam_train} | Fine-tune SAM: {sam_finetune} | "
+                    f"Prune Ratio: {pruning_ratio}\n"
+                )
 
-                        # evaluate before training
-                        eval_metrics = evaluate(model, device, test_loader, CRITERION)
-                        # print metrics
-                        print(f"Epoch {180-1}:")
-                        for name, value in eval_metrics.items():
-                            if value is not None:
-                                    print(f"  Test {name}: {value:.4f}")
-                        # prune the model
-                        parameters_to_prune = [(module, 'weight') for _, module in model.named_modules() if isinstance(module, (nn.Linear, nn.Conv2d))]
-                        prune.global_unstructured(
-                            parameters_to_prune,
-                            pruning_method=prune.L1Unstructured,
-                            amount=prune_ratio,
-                        )
-                        
+                model = MODEL_NAME_TO_CLASS[model_name](**model_params)
+                model.load_state_dict(torch.load(trained_model_path, map_location="cpu"))
+                model = model.to(device)
 
-                        train_loop(
-                            epochs=EPOCHS,
-                            use_sam=sam_finetune,
-                            model=model,
-                            device=device,
-                            train_loader=train_loader,
-                            test_loader=test_loader,
-                            SGD_optimizer=SGD_optimizer,
-                            SAM_optimizer=SAM_optimizer,
-                            criterion=CRITERION,
-                            scheduler=SCHEDULER,
-                            tensorboard_log_dir=tensorboard_log_dir,
-                            first_epoch=180
-                        )   
+                eval_metrics = evaluate(model, device, test_loader, criterion)
+                print(f"Epoch {dense_epochs}:")
+                for name, value in eval_metrics.items():
+                    if value is not None:
+                        print(f"  Test {name}: {value:.4f}")
 
-                        # save the model
-                        model_path = os.path.join(MODEL_SAVE_PATH, f"{model_name}_{dataset_name}_sam_train_{sam_train}_sam_finetune_{sam_finetune}_prune_{prune_ratio}.pth")
-                        torch.save(model.state_dict(), model_path)
+                parameters_to_prune = [
+                    (module, "weight")
+                    for _, module in model.named_modules()
+                    if isinstance(module, (nn.Linear, nn.Conv2d))
+                ]
+                prune.global_unstructured(
+                    parameters_to_prune,
+                    pruning_method=prune.L1Unstructured,
+                    amount=pruning_ratio,
+                )
+
+                if optimizer_name == "sgd":
+                    weight_decay = config["training"].get("weight_decay", 1e-4)
+                    momentum = config["training"].get("momentum", 0.9)
+                    rho = config["training"].get("rho", 0.5)
+                    base_optimizer = optim.SGD
+
+                    sgd_optimizer = base_optimizer(
+                        model.parameters(),
+                        lr=learning_rate,
+                        weight_decay=weight_decay,
+                        momentum=momentum,
+                    )
+                    sam_optimizer = SAM(
+                        filter(lambda p: p.requires_grad, model.parameters()),
+                        base_optimizer,
+                        rho=rho,
+                        adaptive=False,
+                        lr=learning_rate,
+                        weight_decay=weight_decay,
+                        momentum=momentum,
+                    )
+                elif optimizer_name == "adamw":
+                    weight_decay = config["training"].get("weight_decay", 1e-4)
+                    rho = config["training"].get("rho", 0.5)
+                    base_optimizer = optim.AdamW
+
+                    sgd_optimizer = base_optimizer(
+                        model.parameters(),
+                        lr=learning_rate,
+                        weight_decay=weight_decay,
+                    )
+                    sam_optimizer = SAM(
+                        filter(lambda p: p.requires_grad, model.parameters()),
+                        base_optimizer,
+                        rho=rho,
+                        adaptive=False,
+                        lr=learning_rate,
+                        weight_decay=weight_decay,
+                    )
+                else:
+                    raise ValueError(f"Unsupported optimizer: {optimizer_name}")
+
+                tensorboard_log_dir = os.path.join(
+                    tensorboard_root,
+                    f"sam_train_{sam_train}_sam_finetune_{sam_finetune}",
+                )
+                checkpoint_dir = os.path.join(
+                    finetune_model_dir,
+                    "checkpoint",
+                    f"sam_train_{sam_train}_sam_finetune_{sam_finetune}",
+                )
+                os.makedirs(checkpoint_dir, exist_ok=True)
+
+                train_loop(
+                    epochs=finetune_epochs,
+                    use_sam=sam_finetune,
+                    model=model,
+                    device=device,
+                    train_loader=train_loader,
+                    test_loader=test_loader,
+                    SGD_optimizer=sgd_optimizer,
+                    SAM_optimizer=sam_optimizer,
+                    criterion=criterion,
+                    scheduler=scheduler,
+                    tensorboard_log_dir=tensorboard_log_dir,
+                    first_epoch=dense_epochs,
+                    checkpoint_folder=checkpoint_dir,
+                    save_every=1,
+                    evaluate_flatness_every=evaluate_flatness_every,
+                )
+
+                model_path = os.path.join(
+                    finetune_model_dir,
+                    f"{model_name}_{dataset_name}_sam_train_{sam_train}_sam_finetune_{sam_finetune}.pth",
+                )
+                torch.save(model.state_dict(), model_path)

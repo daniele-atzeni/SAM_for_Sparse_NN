@@ -181,7 +181,9 @@ def evaluate(
     rho: float = 0.5,
     std: float = 20,
     pruned: bool = False,
-    n_batch: int = 1
+    n_batch: int = 1,
+    evaluate_flatness: bool = True,
+    eval_batches: int = None
     ) -> dict:
 
     model.eval()
@@ -192,7 +194,10 @@ def evaluate(
     batch_corrects = []
     batch_random_loss = []
     batch_random_sgd = []
-    for data, target in test_loader:
+    n_samples = 0
+    for batch_idx, (data, target) in enumerate(test_loader):
+        if eval_batches is not None and batch_idx >= eval_batches:
+            break
         data, target = data.to(device), target.to(device)
 
         # ---- first forward + backward ----
@@ -213,6 +218,7 @@ def evaluate(
         model.zero_grad()
 
         # append batch metrics
+        n_samples += data.size(0)
         batch_loss.append(loss.item() * data.size(0))
         batch_sam_loss.append((sam_loss.item() - loss.item()) * data.size(0))
         batch_corrects.append(
@@ -241,22 +247,23 @@ def evaluate(
 
 
     metrics = {
-        "Loss": sum(batch_loss) / len(test_loader.dataset),
-        "SAM Loss": sum(batch_sam_loss) / len(test_loader.dataset),
-        "Accuracy": sum(batch_corrects) / len(test_loader.dataset),
-        "Random Loss": sum(batch_random_loss) / len(test_loader.dataset),
-        "Random std": sum(batch_random_sgd) / len(test_loader.dataset),
+        "Loss": sum(batch_loss) / n_samples,
+        "SAM Loss": sum(batch_sam_loss) / n_samples,
+        "Accuracy": sum(batch_corrects) / n_samples,
+        "Random Loss": sum(batch_random_loss) / n_samples,
+        "Random std": sum(batch_random_sgd) / n_samples,
         }
 
-    # hessian-based metrics
-    hessian_metrics = hessian_flatness(
-        device=device,
-        model=model,
-        data_loader=test_loader,
-        n_eigs=10,
-        pruned=True,
-        n_batch=n_batch
-    )
-    metrics.update(hessian_metrics)
+    if evaluate_flatness:
+        # hessian-based metrics
+        hessian_metrics = hessian_flatness(
+            device=device,
+            model=model,
+            data_loader=test_loader,
+            n_eigs=10,
+            pruned=pruned,
+            n_batch=n_batch
+        )
+        metrics.update(hessian_metrics)
 
     return metrics

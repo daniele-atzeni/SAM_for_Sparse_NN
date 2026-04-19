@@ -1,0 +1,31 @@
+{
+    "model": {
+        "name": "MLP",
+        "parameters": {
+            "input_size": 784,
+            "hidden_sizes": [128],
+            "num_classes": 10
+        }
+    },
+    "training": {
+        "learning_rate": 0.001,
+        "dense_epochs": 20,
+        "finetune_epochs": 5,
+        "optimizer": "sgd", 
+        "loss_function": "cross_entropy",
+        "scheduler": {
+            "type": "MultiStepLR",
+            "step_size": [80, 160],
+            "gamma": 0.1
+        },
+        "weight_decay": 0.0001,
+        "momentum": 0.9,
+        "rho": 0.1
+    },
+    "dataset": {
+        "name": "MNIST",
+        "batch_size": 64
+    },
+    "save_every": 1,
+    "pruning_ratios": [0.99, 0.999, 0.9999]
+}

@@ -33,5 +33,10 @@
         "name": "cifar10",
         "batch_size": 128
     },
-    "evaluate_flatness_every": 10
+    "evaluate_flatness_every": 10,
+    "save_every": 180,
+    "first_iter": 15,
+    "prune_every": 10,
+    "prune_ratio": 0.3,
+    "n_iter": 5
 }

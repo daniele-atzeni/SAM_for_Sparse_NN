@@ -93,16 +93,19 @@ def train_loop(
         first_epoch: int = 0,
         log_every: int = 100,
         checkpoint_folder: str = "./checkpoint",
-        save_every: int = 100
+        save_every: int = 100,
+        evaluate_flatness_every: int = 10,
+        eval_batches: int = None
         ):
-    
+
     assert use_sam and SAM_optimizer is not None or not use_sam and SGD_optimizer is not None, \
         "Optimizer configuration does not match use_sam flag."
 
     writer = SummaryWriter(log_dir=tensorboard_log_dir)
 
     # evaluate before training
-    eval_metrics = evaluate(model, device, test_loader, criterion)
+    evaluate_flatness = evaluate_flatness_every == 1
+    eval_metrics = evaluate(model, device, test_loader, criterion, evaluate_flatness=evaluate_flatness, eval_batches=eval_batches)
     # log metrics to TensorBoard
     for name, value in eval_metrics.items():
         if value is not None:
@@ -119,7 +122,8 @@ def train_loop(
         else:
             train_metrics = train_epoch(model, device, train_loader, SAM_optimizer, epoch, criterion, log_every=log_every)
         #train_metrics = evaluate(model, device, train_loader, criterion)
-        eval_metrics = evaluate(model, device, test_loader, criterion)
+        evaluate_flatness = epoch % evaluate_flatness_every == 0
+        eval_metrics = evaluate(model, device, test_loader, criterion, evaluate_flatness=evaluate_flatness, eval_batches=eval_batches)
 
         # log metrics to TensorBoard
         for name, value in train_metrics.items():
@@ -169,7 +173,8 @@ def train_prune_loop(
         log_every: int = 100,
         checkpoint_folder: str = "./checkpoint",
         save_every: int = 100,
-        first_epoch: int = 0
+        first_epoch: int = 0,
+        evaluate_flatness_every: int = 1
         ):
     
     assert use_sam and SAM_optimizer is not None or not use_sam and SGD_optimizer is not None, \
@@ -178,7 +183,8 @@ def train_prune_loop(
     writer = SummaryWriter(log_dir=tensorboard_log_dir)
 
     # evaluate before training
-    eval_metrics = evaluate(model, device, test_loader, criterion)
+    evaluate_flatness = first_epoch % evaluate_flatness_every == 0
+    eval_metrics = evaluate(model, device, test_loader, criterion, pruned=False, evaluate_flatness=evaluate_flatness)
     # log metrics to TensorBoard
     for name, value in eval_metrics.items():
         if value is not None:
@@ -221,7 +227,9 @@ def train_prune_loop(
         else:
             train_metrics = train_epoch(model, device, train_loader, SAM_optimizer, epoch, criterion, log_every=log_every)
         #train_metrics = evaluate(model, device, train_loader, criterion)
-        eval_metrics = evaluate(model, device, test_loader, criterion)
+        evaluate_flatness = epoch % evaluate_flatness_every == 0
+        eval_metrics = evaluate(model, device, test_loader, criterion, pruned=False, #=epoch>=first_iter, 
+                                evaluate_flatness=evaluate_flatness)
 
         # log metrics
         for name, value in train_metrics.items():

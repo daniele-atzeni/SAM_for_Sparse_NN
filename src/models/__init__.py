@@ -12,3 +12,4 @@ from src.models.cifar_vgg_plus import vgg16_mingze
 from src.models.cifar_vgg_plus import vgg19_mingze
 
 from src.models.vision_transformer import ViT
+from src.models.imagenet_models import *

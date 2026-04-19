@@ -10,8 +10,7 @@ from src.train.SAM import SAM
 from src.train.training import train_prune_loop
 from src.models import *
 from src.data import get_mnist_loaders, get_fashion_mnist_loaders, get_cifar10_loaders, get_cifar100_loaders
-from src.train.lr_scheduler import MultiStepLR
-
+from src.train.lr_scheduler import MultiStepLR, CosineAnnealingLR, WarmupCosineAnnealingLR
 
 
 MODEL_NAME_TO_CLASS = {
@@ -66,8 +65,8 @@ if __name__ == "__main__":
 
     #CONFIG_PATH = "./configs/sparse/MLP_MNIST_config.json"
     #CONFIG_PATH = "./configs/sparse/MLP_FashionMNIST_config.json"
-    CONFIG_PATH = "./configs/sparse/ResNet_CIFAR10_config.json"
-    CONFIG_PATH = "/home/datzeni/SAM_for_Sparse_NN/configs/sparse/ResNet_CIFAR10_config.json"
+    #CONFIG_PATH = "./configs/sparse/ResNet_CIFAR10_config.json"
+    CONFIG_PATH = "/home/datzeni/SAM_for_Sparse_NN/configs/sparse/ViT_CIFAR10_config_5.json"
     config = json.load(open(CONFIG_PATH, "r"))
 
     # PRUNING PARAMETERS
@@ -88,7 +87,7 @@ if __name__ == "__main__":
     model_params = config["model"]["parameters"]
     model = MODEL_NAME_TO_CLASS[model_name](**model_params)
     # handling model initialization and saving
-    MODEL_SAVE_PATH = f"/home/datzeni/SAM_for_Sparse_NN/saved_models/sparse/{model_name}_{dataset_name}_prune_ratio_{prune_ratio}_3"
+    MODEL_SAVE_PATH = f"/home/datzeni/SAM_for_Sparse_NN/saved_models/sparse/{model_name}_{dataset_name}_prune_ratio_{prune_ratio}_5"
     CHECKPOINT_PATH = os.path.join(MODEL_SAVE_PATH, "checkpoint")
     os.makedirs(MODEL_SAVE_PATH, exist_ok=True)
     os.makedirs(CHECKPOINT_PATH, exist_ok=True)
@@ -111,6 +110,13 @@ if __name__ == "__main__":
         step_size = config["training"]["scheduler"]["step_size"]
         gamma = config["training"]["scheduler"]["gamma"]
         scheduler = MultiStepLR(learning_rate, step_size, gamma=gamma)
+    elif scheduler_name == "CosineAnnealingLR":
+        T_max = config["training"]["scheduler"]["T_max"]
+        scheduler = CosineAnnealingLR(learning_rate, T_max=T_max)
+    elif scheduler_name == "WarmupCosineAnnealingLR":
+        T_max = config["training"]["scheduler"]["T_max"]
+        warmup_epochs = config["training"]["scheduler"]["warmup_epochs"]
+        scheduler = WarmupCosineAnnealingLR(learning_rate, T_max=T_max, warmup_epochs=warmup_epochs)
     else:
         scheduler = None
 
@@ -124,11 +130,13 @@ if __name__ == "__main__":
     USE_SAMS = [True, False]
     MODE = "sparse"  # "dense" or "sparse"
 
-    tensorboard_main_log_dir = f"/home/datzeni/SAM_for_Sparse_NN/tensorboard/runs_{MODE}/{model_name}_{dataset_name}_prune_ratio_{prune_ratio}_3"
+    tensorboard_main_log_dir = f"/home/datzeni/SAM_for_Sparse_NN/tensorboard/runs_{MODE}/{model_name}_{dataset_name}_prune_ratio_{prune_ratio}_5"
 
     for use_sam in USE_SAMS:
 
-        print(f"\n\nTraining {model_name} on {dataset_name} with model config at {CONFIG_PATH} | Using SAM: {use_sam} | Pruning ratio: {prune_ratio}\n")      
+        print(f"\n\nTraining {model_name} on {dataset_name} | Using SAM: {use_sam} | Pruning ratio: {prune_ratio}\n")    
+        print(f"\nModel config:\n{config}\n")
+  
         tensorboard_log_dir = tensorboard_main_log_dir + f"/SAM_{use_sam}"
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -161,6 +169,24 @@ if __name__ == "__main__":
                     lr=learning_rate,
                     weight_decay=weight_decay, 
                     momentum=momentum
+                )
+        elif optimizer_name == "adamw":
+            base_optimizer = optim.AdamW
+            weight_decay = config["training"].get("weight_decay", 1e-4)
+            rho = config["training"].get("rho", 0.5)
+
+            SGD_optimizer = base_optimizer(
+                model.parameters(), 
+                lr=learning_rate, 
+                weight_decay=weight_decay
+            )
+            SAM_optimizer = SAM(
+                    filter(lambda p: p.requires_grad, model.parameters()),
+                    base_optimizer,
+                    rho=rho, 
+                    adaptive=False, 
+                    lr=learning_rate,
+                    weight_decay=weight_decay
                 )
         else:
             raise ValueError(f"Unsupported optimizer: {optimizer_name}")

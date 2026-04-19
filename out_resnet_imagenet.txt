@@ -1,0 +1,287 @@
+
+
+Training ResNet50_IN on ImageNet | Using SAM: False
+
+
+Model config:
+{'model': {'name': 'ResNet50_IN', 'parameters': {'num_classes': 100}}, 'training': {'learning_rate': 0.1, 'epochs': 90, 'optimizer': 'sgd', 'loss_function': 'cross_entropy', 'scheduler': {'type': 'MultiStepLR', 'step_size': [30, 60, 80], 'gamma': 0.1}, 'weight_decay': 0.0001, 'momentum': 0.9, 'rho': 0.05}, 'dataset': {'name': 'ImageNet', 'root': '/home/datzeni/SAM_for_Sparse_NN/src/data/DATA/Imagenet_imagefolder', 'batch_size': 64}, 'save_every': 10, 'evaluate_flatness_every': 10, 'eval_batches': 5}
+
+Epoch 0:
+  Test Loss: 70.4368
+  Test SAM Loss: 11055.6610
+  Test Accuracy: 0.0000
+  Test Random Loss: 7.9184
+  Test Random std: 11.9517
+Train Epoch: 1 [0/126689 (0%)]	Loss: 4.768442	SAM Loss: N/A   
+Train Epoch: 1 [6400/126689 (5%)]	Loss: 4.613780	SAM Loss: N/A   
+Train Epoch: 1 [12800/126689 (10%)]	Loss: 4.654929	SAM Loss: N/A   
+Train Epoch: 1 [19200/126689 (15%)]	Loss: 4.621677	SAM Loss: N/A   
+Train Epoch: 1 [25600/126689 (20%)]	Loss: 4.588841	SAM Loss: N/A   
+Train Epoch: 1 [32000/126689 (25%)]	Loss: 4.555539	SAM Loss: N/A   
+Train Epoch: 1 [38400/126689 (30%)]	Loss: 4.535970	SAM Loss: N/A   
+Train Epoch: 1 [44800/126689 (35%)]	Loss: 4.460479	SAM Loss: N/A   
+Train Epoch: 1 [51200/126689 (40%)]	Loss: 4.428185	SAM Loss: N/A   
+Train Epoch: 1 [57600/126689 (45%)]	Loss: 4.472497	SAM Loss: N/A   
+Train Epoch: 1 [64000/126689 (51%)]	Loss: 4.404772	SAM Loss: N/A   
+Train Epoch: 1 [70400/126689 (56%)]	Loss: 4.392442	SAM Loss: N/A   
+Train Epoch: 1 [76800/126689 (61%)]	Loss: 4.457492	SAM Loss: N/A   
+Train Epoch: 1 [83200/126689 (66%)]	Loss: 4.415872	SAM Loss: N/A   
+Train Epoch: 1 [89600/126689 (71%)]	Loss: 4.161666	SAM Loss: N/A   
+Train Epoch: 1 [96000/126689 (76%)]	Loss: 4.443226	SAM Loss: N/A   
+Train Epoch: 1 [102400/126689 (81%)]	Loss: 4.294177	SAM Loss: N/A   
+Train Epoch: 1 [108800/126689 (86%)]	Loss: 4.420428	SAM Loss: N/A   
+Train Epoch: 1 [115200/126689 (91%)]	Loss: 4.297612	SAM Loss: N/A   
+Train Epoch: 1 [121600/126689 (96%)]	Loss: 4.274586	SAM Loss: N/A   
+Epoch 1:
+  Train Loss: 4.5047
+  Train Accuracy: 0.0273
+  Test Loss: 4.1159
+  Test SAM Loss: 4.2765
+  Test Accuracy: 0.1688
+  Test Random Loss: 0.0110
+  Test Random std: 0.0399
+Train Epoch: 2 [0/126689 (0%)]	Loss: 4.372496	SAM Loss: N/A   
+Train Epoch: 2 [6400/126689 (5%)]	Loss: 4.225238	SAM Loss: N/A   
+Train Epoch: 2 [12800/126689 (10%)]	Loss: 4.088603	SAM Loss: N/A   
+Train Epoch: 2 [19200/126689 (15%)]	Loss: 4.161897	SAM Loss: N/A   
+Train Epoch: 2 [25600/126689 (20%)]	Loss: 4.174328	SAM Loss: N/A   
+Train Epoch: 2 [32000/126689 (25%)]	Loss: 4.150185	SAM Loss: N/A   
+Train Epoch: 2 [38400/126689 (30%)]	Loss: 3.983418	SAM Loss: N/A   
+Train Epoch: 2 [44800/126689 (35%)]	Loss: 4.016108	SAM Loss: N/A   
+Train Epoch: 2 [51200/126689 (40%)]	Loss: 4.193208	SAM Loss: N/A   
+Train Epoch: 2 [57600/126689 (45%)]	Loss: 4.032186	SAM Loss: N/A   
+Train Epoch: 2 [64000/126689 (51%)]	Loss: 3.968838	SAM Loss: N/A   
+Train Epoch: 2 [70400/126689 (56%)]	Loss: 4.117260	SAM Loss: N/A   
+Train Epoch: 2 [76800/126689 (61%)]	Loss: 3.743393	SAM Loss: N/A   
+Train Epoch: 2 [83200/126689 (66%)]	Loss: 3.818537	SAM Loss: N/A   
+Train Epoch: 2 [89600/126689 (71%)]	Loss: 3.790713	SAM Loss: N/A   
+Train Epoch: 2 [96000/126689 (76%)]	Loss: 3.954861	SAM Loss: N/A   
+Train Epoch: 2 [102400/126689 (81%)]	Loss: 4.075274	SAM Loss: N/A   
+Train Epoch: 2 [108800/126689 (86%)]	Loss: 3.809376	SAM Loss: N/A   
+Train Epoch: 2 [115200/126689 (91%)]	Loss: 3.678769	SAM Loss: N/A   
+Train Epoch: 2 [121600/126689 (96%)]	Loss: 3.586813	SAM Loss: N/A   
+Epoch 2:
+  Train Loss: 3.9834
+  Train Accuracy: 0.0873
+  Test Loss: 3.4695
+  Test SAM Loss: 8.0449
+  Test Accuracy: 0.1875
+  Test Random Loss: 0.0103
+  Test Random std: 0.0446
+Train Epoch: 3 [0/126689 (0%)]	Loss: 3.740356	SAM Loss: N/A   
+Train Epoch: 3 [6400/126689 (5%)]	Loss: 3.820238	SAM Loss: N/A   
+Train Epoch: 3 [12800/126689 (10%)]	Loss: 3.695332	SAM Loss: N/A   
+Train Epoch: 3 [19200/126689 (15%)]	Loss: 3.682326	SAM Loss: N/A   
+Train Epoch: 3 [25600/126689 (20%)]	Loss: 3.747375	SAM Loss: N/A   
+Train Epoch: 3 [32000/126689 (25%)]	Loss: 3.687787	SAM Loss: N/A   
+Train Epoch: 3 [38400/126689 (30%)]	Loss: 3.452250	SAM Loss: N/A   
+Train Epoch: 3 [44800/126689 (35%)]	Loss: 3.538449	SAM Loss: N/A   
+Train Epoch: 3 [51200/126689 (40%)]	Loss: 3.728256	SAM Loss: N/A   
+Train Epoch: 3 [57600/126689 (45%)]	Loss: 3.622815	SAM Loss: N/A   
+Train Epoch: 3 [64000/126689 (51%)]	Loss: 3.420903	SAM Loss: N/A   
+Train Epoch: 3 [70400/126689 (56%)]	Loss: 3.586754	SAM Loss: N/A   
+Train Epoch: 3 [76800/126689 (61%)]	Loss: 3.464705	SAM Loss: N/A   
+Train Epoch: 3 [83200/126689 (66%)]	Loss: 3.744249	SAM Loss: N/A   
+Train Epoch: 3 [89600/126689 (71%)]	Loss: 3.461752	SAM Loss: N/A   
+Train Epoch: 3 [96000/126689 (76%)]	Loss: 3.249022	SAM Loss: N/A   
+Train Epoch: 3 [102400/126689 (81%)]	Loss: 3.410727	SAM Loss: N/A   
+Train Epoch: 3 [108800/126689 (86%)]	Loss: 3.315569	SAM Loss: N/A   
+Train Epoch: 3 [115200/126689 (91%)]	Loss: 3.287886	SAM Loss: N/A   
+Train Epoch: 3 [121600/126689 (96%)]	Loss: 2.789305	SAM Loss: N/A   
+Epoch 3:
+  Train Loss: 3.4635
+  Train Accuracy: 0.1763
+  Test Loss: 2.9416
+  Test SAM Loss: 8.6406
+  Test Accuracy: 0.2812
+  Test Random Loss: -0.0034
+  Test Random std: 0.0502
+Train Epoch: 4 [0/126689 (0%)]	Loss: 3.267998	SAM Loss: N/A   
+Train Epoch: 4 [6400/126689 (5%)]	Loss: 3.261427	SAM Loss: N/A   
+Train Epoch: 4 [12800/126689 (10%)]	Loss: 2.979723	SAM Loss: N/A   
+Train Epoch: 4 [19200/126689 (15%)]	Loss: 3.307038	SAM Loss: N/A   
+Train Epoch: 4 [25600/126689 (20%)]	Loss: 2.851045	SAM Loss: N/A   
+Train Epoch: 4 [32000/126689 (25%)]	Loss: 3.171283	SAM Loss: N/A   
+Train Epoch: 4 [38400/126689 (30%)]	Loss: 3.229694	SAM Loss: N/A   
+Train Epoch: 4 [44800/126689 (35%)]	Loss: 3.432858	SAM Loss: N/A   
+Train Epoch: 4 [51200/126689 (40%)]	Loss: 2.559455	SAM Loss: N/A   
+Train Epoch: 4 [57600/126689 (45%)]	Loss: 3.222990	SAM Loss: N/A   
+Train Epoch: 4 [64000/126689 (51%)]	Loss: 3.013000	SAM Loss: N/A   
+Train Epoch: 4 [70400/126689 (56%)]	Loss: 3.036853	SAM Loss: N/A   
+Train Epoch: 4 [76800/126689 (61%)]	Loss: 2.743045	SAM Loss: N/A   
+Train Epoch: 4 [83200/126689 (66%)]	Loss: 3.091304	SAM Loss: N/A   
+Train Epoch: 4 [89600/126689 (71%)]	Loss: 3.467964	SAM Loss: N/A   
+Train Epoch: 4 [96000/126689 (76%)]	Loss: 2.950533	SAM Loss: N/A   
+Train Epoch: 4 [102400/126689 (81%)]	Loss: 2.982687	SAM Loss: N/A   
+Train Epoch: 4 [108800/126689 (86%)]	Loss: 2.703720	SAM Loss: N/A   
+Train Epoch: 4 [115200/126689 (91%)]	Loss: 2.962059	SAM Loss: N/A   
+Train Epoch: 4 [121600/126689 (96%)]	Loss: 2.730235	SAM Loss: N/A   
+Epoch 4:
+  Train Loss: 3.0743
+  Train Accuracy: 0.2516
+  Test Loss: 2.9993
+  Test SAM Loss: 8.4969
+  Test Accuracy: 0.3312
+  Test Random Loss: 0.0004
+  Test Random std: 0.0582
+Train Epoch: 5 [0/126689 (0%)]	Loss: 2.878505	SAM Loss: N/A   
+Train Epoch: 5 [6400/126689 (5%)]	Loss: 2.706633	SAM Loss: N/A   
+Train Epoch: 5 [12800/126689 (10%)]	Loss: 2.870875	SAM Loss: N/A   
+Train Epoch: 5 [19200/126689 (15%)]	Loss: 3.079645	SAM Loss: N/A   
+Train Epoch: 5 [25600/126689 (20%)]	Loss: 2.914926	SAM Loss: N/A   
+Train Epoch: 5 [32000/126689 (25%)]	Loss: 2.713694	SAM Loss: N/A   
+Train Epoch: 5 [38400/126689 (30%)]	Loss: 3.139570	SAM Loss: N/A   
+Train Epoch: 5 [44800/126689 (35%)]	Loss: 2.640002	SAM Loss: N/A   
+Train Epoch: 5 [51200/126689 (40%)]	Loss: 2.619618	SAM Loss: N/A   
+Train Epoch: 5 [57600/126689 (45%)]	Loss: 2.963830	SAM Loss: N/A   
+Train Epoch: 5 [64000/126689 (51%)]	Loss: 2.936511	SAM Loss: N/A   
+Train Epoch: 5 [70400/126689 (56%)]	Loss: 2.934465	SAM Loss: N/A   
+Train Epoch: 5 [76800/126689 (61%)]	Loss: 2.915127	SAM Loss: N/A   
+Train Epoch: 5 [83200/126689 (66%)]	Loss: 2.557821	SAM Loss: N/A   
+Train Epoch: 5 [89600/126689 (71%)]	Loss: 2.640472	SAM Loss: N/A   
+Train Epoch: 5 [96000/126689 (76%)]	Loss: 2.742241	SAM Loss: N/A   
+Train Epoch: 5 [102400/126689 (81%)]	Loss: 2.908978	SAM Loss: N/A   
+Train Epoch: 5 [108800/126689 (86%)]	Loss: 2.543896	SAM Loss: N/A   
+Train Epoch: 5 [115200/126689 (91%)]	Loss: 2.436117	SAM Loss: N/A   
+Train Epoch: 5 [121600/126689 (96%)]	Loss: 2.807333	SAM Loss: N/A   
+Epoch 5:
+  Train Loss: 2.7941
+  Train Accuracy: 0.3101
+  Test Loss: 2.3712
+  Test SAM Loss: 7.0645
+  Test Accuracy: 0.4313
+  Test Random Loss: -0.0011
+  Test Random std: 0.0475
+Train Epoch: 6 [0/126689 (0%)]	Loss: 2.510732	SAM Loss: N/A   
+Train Epoch: 6 [6400/126689 (5%)]	Loss: 2.251649	SAM Loss: N/A   
+Train Epoch: 6 [12800/126689 (10%)]	Loss: 2.546771	SAM Loss: N/A   
+Train Epoch: 6 [19200/126689 (15%)]	Loss: 2.272015	SAM Loss: N/A   
+Train Epoch: 6 [25600/126689 (20%)]	Loss: 2.436013	SAM Loss: N/A   
+Train Epoch: 6 [32000/126689 (25%)]	Loss: 2.045640	SAM Loss: N/A   
+Train Epoch: 6 [38400/126689 (30%)]	Loss: 2.437448	SAM Loss: N/A   
+Train Epoch: 6 [44800/126689 (35%)]	Loss: 2.533999	SAM Loss: N/A   
+Train Epoch: 6 [51200/126689 (40%)]	Loss: 2.592044	SAM Loss: N/A   
+Train Epoch: 6 [57600/126689 (45%)]	Loss: 2.412984	SAM Loss: N/A   
+Train Epoch: 6 [64000/126689 (51%)]	Loss: 2.637154	SAM Loss: N/A   
+Train Epoch: 6 [70400/126689 (56%)]	Loss: 2.421504	SAM Loss: N/A   
+Train Epoch: 6 [76800/126689 (61%)]	Loss: 2.257758	SAM Loss: N/A   
+Train Epoch: 6 [83200/126689 (66%)]	Loss: 2.539217	SAM Loss: N/A   
+Train Epoch: 6 [89600/126689 (71%)]	Loss: 2.784364	SAM Loss: N/A   
+Train Epoch: 6 [96000/126689 (76%)]	Loss: 2.212144	SAM Loss: N/A   
+Train Epoch: 6 [102400/126689 (81%)]	Loss: 2.871108	SAM Loss: N/A   
+Train Epoch: 6 [108800/126689 (86%)]	Loss: 2.649731	SAM Loss: N/A   
+Train Epoch: 6 [115200/126689 (91%)]	Loss: 2.721885	SAM Loss: N/A   
+Train Epoch: 6 [121600/126689 (96%)]	Loss: 2.779689	SAM Loss: N/A   
+Epoch 6:
+  Train Loss: 2.5723
+  Train Accuracy: 0.3557
+  Test Loss: 2.0456
+  Test SAM Loss: 7.1544
+  Test Accuracy: 0.5125
+  Test Random Loss: 0.0100
+  Test Random std: 0.0391
+Train Epoch: 7 [0/126689 (0%)]	Loss: 2.854171	SAM Loss: N/A   
+Train Epoch: 7 [6400/126689 (5%)]	Loss: 2.318027	SAM Loss: N/A   
+Train Epoch: 7 [12800/126689 (10%)]	Loss: 2.711776	SAM Loss: N/A   
+Train Epoch: 7 [19200/126689 (15%)]	Loss: 1.918428	SAM Loss: N/A   
+Train Epoch: 7 [25600/126689 (20%)]	Loss: 2.506794	SAM Loss: N/A   
+Train Epoch: 7 [32000/126689 (25%)]	Loss: 2.467770	SAM Loss: N/A   
+Train Epoch: 7 [38400/126689 (30%)]	Loss: 2.706990	SAM Loss: N/A   
+Train Epoch: 7 [44800/126689 (35%)]	Loss: 2.530582	SAM Loss: N/A   
+Train Epoch: 7 [51200/126689 (40%)]	Loss: 2.406993	SAM Loss: N/A   
+Train Epoch: 7 [57600/126689 (45%)]	Loss: 2.401594	SAM Loss: N/A   
+Train Epoch: 7 [64000/126689 (51%)]	Loss: 2.540133	SAM Loss: N/A   
+Train Epoch: 7 [70400/126689 (56%)]	Loss: 2.231261	SAM Loss: N/A   
+Train Epoch: 7 [76800/126689 (61%)]	Loss: 2.023404	SAM Loss: N/A   
+Train Epoch: 7 [83200/126689 (66%)]	Loss: 2.398538	SAM Loss: N/A   
+Train Epoch: 7 [89600/126689 (71%)]	Loss: 2.089373	SAM Loss: N/A   
+Train Epoch: 7 [96000/126689 (76%)]	Loss: 2.544831	SAM Loss: N/A   
+Train Epoch: 7 [102400/126689 (81%)]	Loss: 2.317802	SAM Loss: N/A   
+Train Epoch: 7 [108800/126689 (86%)]	Loss: 2.068254	SAM Loss: N/A   
+Train Epoch: 7 [115200/126689 (91%)]	Loss: 2.328147	SAM Loss: N/A   
+Train Epoch: 7 [121600/126689 (96%)]	Loss: 2.557450	SAM Loss: N/A   
+Epoch 7:
+  Train Loss: 2.3889
+  Train Accuracy: 0.3975
+  Test Loss: 2.0906
+  Test SAM Loss: 6.6335
+  Test Accuracy: 0.4531
+  Test Random Loss: -0.0007
+  Test Random std: 0.0370
+Train Epoch: 8 [0/126689 (0%)]	Loss: 2.005595	SAM Loss: N/A   
+Train Epoch: 8 [6400/126689 (5%)]	Loss: 2.505671	SAM Loss: N/A   
+Train Epoch: 8 [12800/126689 (10%)]	Loss: 2.132640	SAM Loss: N/A   
+Train Epoch: 8 [19200/126689 (15%)]	Loss: 2.134201	SAM Loss: N/A   
+Train Epoch: 8 [25600/126689 (20%)]	Loss: 2.162378	SAM Loss: N/A   
+Train Epoch: 8 [32000/126689 (25%)]	Loss: 2.607409	SAM Loss: N/A   
+Train Epoch: 8 [38400/126689 (30%)]	Loss: 1.928236	SAM Loss: N/A   
+Train Epoch: 8 [44800/126689 (35%)]	Loss: 2.167278	SAM Loss: N/A   
+Train Epoch: 8 [51200/126689 (40%)]	Loss: 2.122559	SAM Loss: N/A   
+Train Epoch: 8 [57600/126689 (45%)]	Loss: 2.352009	SAM Loss: N/A   
+Train Epoch: 8 [64000/126689 (51%)]	Loss: 2.771980	SAM Loss: N/A   
+Train Epoch: 8 [70400/126689 (56%)]	Loss: 2.416218	SAM Loss: N/A   
+Train Epoch: 8 [76800/126689 (61%)]	Loss: 2.293787	SAM Loss: N/A   
+Train Epoch: 8 [83200/126689 (66%)]	Loss: 1.700526	SAM Loss: N/A   
+Train Epoch: 8 [89600/126689 (71%)]	Loss: 2.222569	SAM Loss: N/A   
+Train Epoch: 8 [96000/126689 (76%)]	Loss: 2.162863	SAM Loss: N/A   
+Train Epoch: 8 [102400/126689 (81%)]	Loss: 1.715076	SAM Loss: N/A   
+Train Epoch: 8 [108800/126689 (86%)]	Loss: 2.502832	SAM Loss: N/A   
+Train Epoch: 8 [115200/126689 (91%)]	Loss: 2.122614	SAM Loss: N/A   
+Train Epoch: 8 [121600/126689 (96%)]	Loss: 1.699350	SAM Loss: N/A   
+Epoch 8:
+  Train Loss: 2.2449
+  Train Accuracy: 0.4292
+  Test Loss: 2.2665
+  Test SAM Loss: 8.5122
+  Test Accuracy: 0.4125
+  Test Random Loss: 0.0086
+  Test Random std: 0.0520
+Train Epoch: 9 [0/126689 (0%)]	Loss: 2.408226	SAM Loss: N/A   
+Train Epoch: 9 [6400/126689 (5%)]	Loss: 2.240871	SAM Loss: N/A   
+Train Epoch: 9 [12800/126689 (10%)]	Loss: 2.130340	SAM Loss: N/A   
+Train Epoch: 9 [19200/126689 (15%)]	Loss: 1.911776	SAM Loss: N/A   
+Train Epoch: 9 [25600/126689 (20%)]	Loss: 2.172727	SAM Loss: N/A   
+Train Epoch: 9 [32000/126689 (25%)]	Loss: 2.013276	SAM Loss: N/A   
+Train Epoch: 9 [38400/126689 (30%)]	Loss: 2.237666	SAM Loss: N/A   
+Train Epoch: 9 [44800/126689 (35%)]	Loss: 1.683470	SAM Loss: N/A   
+Train Epoch: 9 [51200/126689 (40%)]	Loss: 2.384711	SAM Loss: N/A   
+Train Epoch: 9 [57600/126689 (45%)]	Loss: 2.132993	SAM Loss: N/A   
+Train Epoch: 9 [64000/126689 (51%)]	Loss: 1.917468	SAM Loss: N/A   
+Train Epoch: 9 [70400/126689 (56%)]	Loss: 2.134854	SAM Loss: N/A   
+Train Epoch: 9 [76800/126689 (61%)]	Loss: 2.088481	SAM Loss: N/A   
+Train Epoch: 9 [83200/126689 (66%)]	Loss: 1.854793	SAM Loss: N/A   
+Train Epoch: 9 [89600/126689 (71%)]	Loss: 1.989487	SAM Loss: N/A   
+Train Epoch: 9 [96000/126689 (76%)]	Loss: 1.832476	SAM Loss: N/A   
+Train Epoch: 9 [102400/126689 (81%)]	Loss: 2.131756	SAM Loss: N/A   
+Train Epoch: 9 [108800/126689 (86%)]	Loss: 1.911555	SAM Loss: N/A   
+Train Epoch: 9 [115200/126689 (91%)]	Loss: 2.417916	SAM Loss: N/A   
+Train Epoch: 9 [121600/126689 (96%)]	Loss: 1.896475	SAM Loss: N/A   
+Epoch 9:
+  Train Loss: 2.1391
+  Train Accuracy: 0.4525
+  Test Loss: 2.0198
+  Test SAM Loss: 7.8744
+  Test Accuracy: 0.4938
+  Test Random Loss: 0.0115
+  Test Random std: 0.0399
+Train Epoch: 10 [0/126689 (0%)]	Loss: 1.881102	SAM Loss: N/A   
+Train Epoch: 10 [6400/126689 (5%)]	Loss: 1.986869	SAM Loss: N/A   
+Train Epoch: 10 [12800/126689 (10%)]	Loss: 2.179004	SAM Loss: N/A   
+Train Epoch: 10 [19200/126689 (15%)]	Loss: 2.213212	SAM Loss: N/A   
+Train Epoch: 10 [25600/126689 (20%)]	Loss: 2.267756	SAM Loss: N/A   
+Train Epoch: 10 [32000/126689 (25%)]	Loss: 2.171006	SAM Loss: N/A   
+Train Epoch: 10 [38400/126689 (30%)]	Loss: 2.487409	SAM Loss: N/A   
+Train Epoch: 10 [44800/126689 (35%)]	Loss: 2.149774	SAM Loss: N/A   
+Train Epoch: 10 [51200/126689 (40%)]	Loss: 2.351109	SAM Loss: N/A   
+Train Epoch: 10 [57600/126689 (45%)]	Loss: 1.935486	SAM Loss: N/A   
+Train Epoch: 10 [64000/126689 (51%)]	Loss: 2.215925	SAM Loss: N/A   
+Train Epoch: 10 [70400/126689 (56%)]	Loss: 2.006498	SAM Loss: N/A   
+Train Epoch: 10 [76800/126689 (61%)]	Loss: 2.312062	SAM Loss: N/A   
+Train Epoch: 10 [83200/126689 (66%)]	Loss: 2.211399	SAM Loss: N/A   
+Train Epoch: 10 [89600/126689 (71%)]	Loss: 2.129223	SAM Loss: N/A   
+Train Epoch: 10 [96000/126689 (76%)]	Loss: 1.780522	SAM Loss: N/A   
+Train Epoch: 10 [102400/126689 (81%)]	Loss: 1.912212	SAM Loss: N/A   
+Train Epoch: 10 [108800/126689 (86%)]	Loss: 1.902016	SAM Loss: N/A   
+Train Epoch: 10 [115200/126689 (91%)]	Loss: 1.771195	SAM Loss: N/A   
+Train Epoch: 10 [121600/126689 (96%)]	Loss: 1.740168	SAM Loss: N/A   
+Computing Hessian trace...
