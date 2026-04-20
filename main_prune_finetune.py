@@ -169,11 +169,11 @@ if __name__ == "__main__":
                 ))
 
                 # Log pre/post pruning metrics to TensorBoard at step=dense_epochs
-                with SummaryWriter(log_dir=tensorboard_log_dir) as pre_writer:
+                with SummaryWriter(log_dir=tensorboard_log_dir) as writer:
                     for k, v in pre_prune_dist.items():
-                        pre_writer.add_scalar(f"{k}/pre_pruning", v, dense_epochs)
+                        writer.add_scalar(f"{k}/pre_pruning", v, dense_epochs)
                     for k, v in post_prune.items():
-                        pre_writer.add_scalar(f"{k}/post_pruning", v, dense_epochs)
+                        writer.add_scalar(f"{k}/post_pruning", v, dense_epochs)
 
                 if optimizer_name == "sgd":
                     weight_decay = config["training"].get("weight_decay", 1e-4)

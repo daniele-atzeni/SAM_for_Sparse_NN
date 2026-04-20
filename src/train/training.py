@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 from src.models.mlp import MLP
 
 from .SAM import SAM, disable_running_stats, enable_running_stats
-from ..eval.eval import evaluate, post_pruning_metrics, weight_distribution_metrics
+from ..eval.eval import evaluate, post_pruning_metrics
 
 
 def train_epoch(
