@@ -21,7 +21,7 @@
     },
     "dataset": {
         "name": "ImageNet",
-        "root": "/home/datzeni/SAM_for_Sparse_NN/src/data/DATA/Imagenet_imagefolder",
+        "root": "./src/data/DATA/ImageNet",
         "batch_size": 64
     },
     "save_every": 10,

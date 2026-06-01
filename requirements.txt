@@ -1,0 +1,10 @@
+torch>=2.0
+torchvision>=0.15
+tensorboard>=2.13
+einops>=0.6
+numpy
+matplotlib
+seaborn
+pandas
+pyarrow          # only needed for scripts/parquet_to_imagefolder.py
+tqdm             # only needed for scripts/parquet_to_imagefolder.py

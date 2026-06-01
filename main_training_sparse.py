@@ -1,195 +1,114 @@
-import os
+"""Sparse training: train with iterative pruning during training.
+
+Usage:
+    python main_training_sparse.py --config configs/sparse/MLP_MNIST_config.json
+"""
+
+import argparse
 import json
+import os
 
 import torch
-import torch.nn as nn
-import torch.optim as optim
 
-
-from src.train.SAM import SAM
+from src.registry import (
+    build_model,
+    build_dataloaders,
+    build_scheduler,
+    build_criterion,
+    build_optimizers,
+)
 from src.train.training import train_prune_loop
-from src.models import *
-from src.data import get_mnist_loaders, get_fashion_mnist_loaders, get_cifar10_loaders, get_cifar100_loaders
-from src.train.lr_scheduler import MultiStepLR, CosineAnnealingLR, WarmupCosineAnnealingLR
 
 
-MODEL_NAME_TO_CLASS = {
-    # Simple NN
-    "MLP": MLP,
-    # ResNet Plus
-    "ResNet20": ResNet20,
-    "ResNet32": ResNet32,
-    "ResNet44": ResNet44,
-    "ResNet56": ResNet56,
-    "ResNet110": ResNet110,
-    # ResNet
-    "ResNet18": ResNet18,
-    "ResNet34": ResNet34,
-    "ResNet50": ResNet50,
-    "ResNet101": ResNet101,
-    "ResNet152": ResNet152,
-    # VGG Plus
-    'vgg11_plus': vgg11_plus,
-    'vgg11_bn_plus': vgg11_bn_plus,
-    'vgg13_mingze': vgg13_mingze,
-    'vgg16_mingze': vgg16_mingze,
-    'vgg19_mingze': vgg19_mingze,
-    # VGG
-    'vgg11': vgg11,
-    'vgg11_bn': vgg11_bn,
-    'vgg13': vgg13,
-    'vgg13_bn': vgg13_bn,
-    'vgg16': vgg16,
-    'vgg16_bn': vgg16_bn,
-    'vgg19': vgg19,
-    'vgg19_bn': vgg19_bn,
-    # Wide ResNet madry
-    "WideResNet34_10_madry": WideResNet34_10_madry,
-    "WideResNet16_8_madry": WideResNet16_8_madry,
-    # Wide ResNet
-    "WideResNet16_8": WideResNet16_8,
-    "WideResNet28_10": WideResNet28_10,
-    # Vision Transformer
-    "ViT": ViT,
-}
+def main():
+    parser = argparse.ArgumentParser(description="Sparse (pruning-during-training)")
+    parser.add_argument(
+        "--config", type=str, required=True, help="Path to a JSON config file"
+    )
+    parser.add_argument(
+        "--use-sam",
+        nargs="+",
+        type=str,
+        default=["True", "False"],
+        help="Which SAM settings to run, e.g. --use-sam True False",
+    )
+    args = parser.parse_args()
 
-DATASET_NAME_TO_LOADER = {
-    "MNIST": get_mnist_loaders,
-    "fashionMNIST": get_fashion_mnist_loaders,
-    "cifar10": get_cifar10_loaders,
-    "cifar100": get_cifar100_loaders
-}
+    config = json.load(open(args.config))
+    use_sam_list = [s.lower() == "true" for s in args.use_sam]
 
-
-if __name__ == "__main__":
-
-    #CONFIG_PATH = "./configs/sparse/MLP_MNIST_config.json"
-    #CONFIG_PATH = "./configs/sparse/MLP_FashionMNIST_config.json"
-    #CONFIG_PATH = "./configs/sparse/ResNet_CIFAR10_config.json"
-    CONFIG_PATH = "/home/datzeni/SAM_for_Sparse_NN/configs/sparse/ViT_CIFAR10_config_5.json"
-    config = json.load(open(CONFIG_PATH, "r"))
-
-    # PRUNING PARAMETERS
+    # ---- Pruning schedule ----
     epochs = config["training"]["epochs"]
     first_iter = config.get("first_iter", 2)
     prune_every = config.get("prune_every", 2)
     prune_ratio = config.get("prune_ratio", 0.5)
     default_n_iter = (epochs - first_iter) // prune_every
     n_iter = config.get("n_iter", default_n_iter)
-    
-    # DATASET
+
+    # ---- Dataset ----
     dataset_name = config["dataset"]["name"]
     batch_size = config["dataset"]["batch_size"]
-    train_loader, test_loader = DATASET_NAME_TO_LOADER[dataset_name](batch_size=batch_size)
+    train_loader, test_loader = build_dataloaders(dataset_name, batch_size)
 
-    # MODEL
+    # ---- Model ----
     model_name = config["model"]["name"]
     model_params = config["model"]["parameters"]
-    model = MODEL_NAME_TO_CLASS[model_name](**model_params)
-    # handling model initialization and saving
-    MODEL_SAVE_PATH = f"/home/datzeni/SAM_for_Sparse_NN/saved_models/sparse/{model_name}_{dataset_name}_prune_ratio_{prune_ratio}_5"
-    CHECKPOINT_PATH = os.path.join(MODEL_SAVE_PATH, "checkpoint")
-    os.makedirs(MODEL_SAVE_PATH, exist_ok=True)
-    os.makedirs(CHECKPOINT_PATH, exist_ok=True)
-    # if a dense initial model exists, load it
-    initial_dense_model_path = f"/home/datzeni/SAM_for_Sparse_NN/saved_models/dense/{model_name}_{dataset_name}/{model_name}_{dataset_name}_initial.pth"
-    if os.path.exists(initial_dense_model_path):
-        print(f"Loading initial model parameters from {initial_dense_model_path}")
-        model.load_state_dict(torch.load(initial_dense_model_path))
-    else:
-        print(f"No initial model found at {initial_dense_model_path}, using random initialization")
-    # save initial parameters
-    initial_state_dict = model.state_dict()
-    INITIAL_MODEL_SAVE_PATH = os.path.join(MODEL_SAVE_PATH, f"{model_name}_{dataset_name}_initial.pth")
-    torch.save(initial_state_dict, INITIAL_MODEL_SAVE_PATH)
+    model = build_model(model_name, model_params)
 
-    # TRAINING
+    # ---- Save paths ----
+    save_dir = os.path.join(
+        "saved_models",
+        "sparse",
+        f"{model_name}_{dataset_name}_prune_ratio_{prune_ratio}",
+    )
+    checkpoint_dir = os.path.join(save_dir, "checkpoint")
+    os.makedirs(checkpoint_dir, exist_ok=True)
+
+    # Try to load matching dense initialisation for a fair comparison
+    dense_init_path = os.path.join(
+        "saved_models",
+        "dense",
+        f"{model_name}_{dataset_name}",
+        f"{model_name}_{dataset_name}_initial.pth",
+    )
+    if os.path.exists(dense_init_path):
+        print(f"Loading initial weights from {dense_init_path}")
+        model.load_state_dict(torch.load(dense_init_path, map_location="cpu"))
+    else:
+        print(f"No dense initialisation found at {dense_init_path}; using random init")
+
+    initial_path = os.path.join(
+        save_dir, f"{model_name}_{dataset_name}_initial.pth"
+    )
+    torch.save(model.state_dict(), initial_path)
+
+    # ---- Training config ----
     learning_rate = config["training"]["learning_rate"]
-    scheduler_name = config["training"].get("scheduler", {}).get("type", None)
-    if scheduler_name == "MultiStepLR":
-        step_size = config["training"]["scheduler"]["step_size"]
-        gamma = config["training"]["scheduler"]["gamma"]
-        scheduler = MultiStepLR(learning_rate, step_size, gamma=gamma)
-    elif scheduler_name == "CosineAnnealingLR":
-        T_max = config["training"]["scheduler"]["T_max"]
-        scheduler = CosineAnnealingLR(learning_rate, T_max=T_max)
-    elif scheduler_name == "WarmupCosineAnnealingLR":
-        T_max = config["training"]["scheduler"]["T_max"]
-        warmup_epochs = config["training"]["scheduler"]["warmup_epochs"]
-        scheduler = WarmupCosineAnnealingLR(learning_rate, T_max=T_max, warmup_epochs=warmup_epochs)
-    else:
-        scheduler = None
+    criterion = build_criterion(config["training"]["loss_function"])
+    scheduler = build_scheduler(config, learning_rate)
 
-    criterion_name = config["training"]["loss_function"]
-    if criterion_name == "cross_entropy":
-        criterion = nn.CrossEntropyLoss()
-    else:
-        raise ValueError(f"Unsupported loss function: {criterion_name}")
+    tb_root = os.path.join(
+        "tensorboard",
+        "runs_sparse",
+        f"{model_name}_{dataset_name}_prune_ratio_{prune_ratio}",
+    )
 
-
-    USE_SAMS = [True, False]
-    MODE = "sparse"  # "dense" or "sparse"
-
-    tensorboard_main_log_dir = f"/home/datzeni/SAM_for_Sparse_NN/tensorboard/runs_{MODE}/{model_name}_{dataset_name}_prune_ratio_{prune_ratio}_5"
-
-    for use_sam in USE_SAMS:
-
-        print(f"\n\nTraining {model_name} on {dataset_name} | Using SAM: {use_sam} | Pruning ratio: {prune_ratio}\n")    
-        print(f"\nModel config:\n{config}\n")
-  
-        tensorboard_log_dir = tensorboard_main_log_dir + f"/SAM_{use_sam}"
+    for use_sam in use_sam_list:
+        print(
+            f"\n{'='*60}\n"
+            f"Training {model_name} on {dataset_name} | SAM: {use_sam} | "
+            f"Prune ratio: {prune_ratio}\n"
+            f"{'='*60}"
+        )
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        
-        # RE-INITIALIZE the model and optimizers inside the loop to ensure a fresh start for each SAM setting
-        model = MODEL_NAME_TO_CLASS[model_name](**model_params)
-        # load initial parameters
-        model.load_state_dict(torch.load(INITIAL_MODEL_SAVE_PATH))
+
+        # Re-create model from scratch to guarantee a clean state
+        model = build_model(model_name, model_params)
+        model.load_state_dict(torch.load(initial_path, map_location="cpu"))
         model = model.to(device)
 
-        # OPTIMIZER
-        optimizer_name = config["training"]["optimizer"]
-        if optimizer_name == "sgd":
-            base_optimizer = optim.SGD
-            weight_decay = config["training"].get("weight_decay", 1e-4)
-            momentum = config["training"].get("momentum", 0.9)
-            rho = config["training"].get("rho", 0.5)
-        
-            SGD_optimizer = base_optimizer(
-                model.parameters(), 
-                lr=learning_rate, 
-                weight_decay=weight_decay,
-                momentum=momentum
-            )
-            SAM_optimizer = SAM(
-                    filter(lambda p: p.requires_grad, model.parameters()),
-                    base_optimizer,
-                    rho=rho, 
-                    adaptive=False, 
-                    lr=learning_rate,
-                    weight_decay=weight_decay, 
-                    momentum=momentum
-                )
-        elif optimizer_name == "adamw":
-            base_optimizer = optim.AdamW
-            weight_decay = config["training"].get("weight_decay", 1e-4)
-            rho = config["training"].get("rho", 0.5)
-
-            SGD_optimizer = base_optimizer(
-                model.parameters(), 
-                lr=learning_rate, 
-                weight_decay=weight_decay
-            )
-            SAM_optimizer = SAM(
-                    filter(lambda p: p.requires_grad, model.parameters()),
-                    base_optimizer,
-                    rho=rho, 
-                    adaptive=False, 
-                    lr=learning_rate,
-                    weight_decay=weight_decay
-                )
-        else:
-            raise ValueError(f"Unsupported optimizer: {optimizer_name}")
+        base_opt, sam_opt = build_optimizers(model, config, learning_rate)
 
         train_prune_loop(
             epochs=epochs,
@@ -198,19 +117,24 @@ if __name__ == "__main__":
             device=device,
             train_loader=train_loader,
             test_loader=test_loader,
-            SGD_optimizer=SGD_optimizer,
-            SAM_optimizer=SAM_optimizer,
+            SGD_optimizer=base_opt,
+            SAM_optimizer=sam_opt,
             criterion=criterion,
             scheduler=scheduler,
-            tensorboard_log_dir=tensorboard_log_dir,
-            checkpoint_folder=CHECKPOINT_PATH,
-            save_every=config.get("save_every", epochs + 1), # if not specified, only save at the end of training
+            tensorboard_log_dir=os.path.join(tb_root, f"SAM_{use_sam}"),
+            checkpoint_folder=checkpoint_dir,
+            save_every=config.get("save_every", epochs + 1),
             first_iter=first_iter,
             prune_every=prune_every,
             prune_ratio=prune_ratio,
-            n_iter=n_iter
-        )   
+            n_iter=n_iter,
+        )
 
-        # save the model
-        model_path = os.path.join(MODEL_SAVE_PATH, f"{model_name}_{dataset_name}_sam_{use_sam}.pth")
-        torch.save(model.state_dict(), model_path)
+        final_path = os.path.join(
+            save_dir, f"{model_name}_{dataset_name}_sam_{use_sam}.pth"
+        )
+        torch.save(model.state_dict(), final_path)
+
+
+if __name__ == "__main__":
+    main()
