@@ -296,10 +296,44 @@ def evaluate(
     pruned: bool = False,
     n_batch: int = 1,
     evaluate_flatness: bool = True,
-    eval_batches: int = None
+    eval_batches: int = None,
+    light: bool = False,
     ) -> dict:
+    """Evaluate on the test set.
+
+    When ``light`` is True, this skips the SAM-loss and 20-sample random-
+    perturbation diagnostics (and the backward pass they require), leaving
+    just a forward-only Loss/Accuracy pass. At CNN scale, the full
+    diagnostic path (1 backward + 21 extra forward passes per batch, plus
+    Hessian eigenvalues when ``evaluate_flatness`` is set) is far too
+    expensive to run every epoch; call with ``light=True`` for routine
+    per-epoch checks and only drop to ``light=False`` on the epochs where
+    ``evaluate_flatness`` is also True.
+    """
 
     model.eval()
+
+    if light:
+        batch_loss = []
+        batch_corrects = []
+        n_samples = 0
+        with torch.no_grad():
+            for batch_idx, (data, target) in enumerate(test_loader):
+                if eval_batches is not None and batch_idx >= eval_batches:
+                    break
+                data, target = data.to(device), target.to(device)
+                output = model(data)
+                loss = criterion(output, target).mean()
+                n_samples += data.size(0)
+                batch_loss.append(loss.item() * data.size(0))
+                batch_corrects.append(output.argmax(dim=1).eq(target).sum().item())
+        return {
+            "Loss": sum(batch_loss) / n_samples,
+            "SAM Loss": None,
+            "Accuracy": sum(batch_corrects) / n_samples,
+            "Random Loss": None,
+            "Random std": None,
+        }
 
     batch_loss = []
     batch_sam_loss = []

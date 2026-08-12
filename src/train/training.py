@@ -105,7 +105,7 @@ def train_loop(
 
     # evaluate before training
     evaluate_flatness = evaluate_flatness_every == 1
-    eval_metrics = evaluate(model, device, test_loader, criterion, evaluate_flatness=evaluate_flatness, eval_batches=eval_batches)
+    eval_metrics = evaluate(model, device, test_loader, criterion, evaluate_flatness=evaluate_flatness, eval_batches=eval_batches, light=not evaluate_flatness)
     # log metrics to TensorBoard
     for name, value in eval_metrics.items():
         if value is not None:
@@ -123,7 +123,7 @@ def train_loop(
             train_metrics = train_epoch(model, device, train_loader, SAM_optimizer, epoch, criterion, log_every=log_every)
         #train_metrics = evaluate(model, device, train_loader, criterion)
         evaluate_flatness = epoch % evaluate_flatness_every == 0
-        eval_metrics = evaluate(model, device, test_loader, criterion, evaluate_flatness=evaluate_flatness, eval_batches=eval_batches)
+        eval_metrics = evaluate(model, device, test_loader, criterion, evaluate_flatness=evaluate_flatness, eval_batches=eval_batches, light=not evaluate_flatness)
 
         # log metrics to TensorBoard
         for name, value in train_metrics.items():
@@ -174,9 +174,10 @@ def train_prune_loop(
         checkpoint_folder: str = "./checkpoint",
         save_every: int = 100,
         first_epoch: int = 0,
-        evaluate_flatness_every: int = 1
+        evaluate_flatness_every: int = 1,
+        eval_batches: int = None,
         ):
-    
+
     assert use_sam and SAM_optimizer is not None or not use_sam and SGD_optimizer is not None, \
         "Optimizer configuration does not match use_sam flag."
 
@@ -184,7 +185,7 @@ def train_prune_loop(
 
     # evaluate before training
     evaluate_flatness = first_epoch % evaluate_flatness_every == 0
-    eval_metrics = evaluate(model, device, test_loader, criterion, pruned=False, evaluate_flatness=evaluate_flatness)
+    eval_metrics = evaluate(model, device, test_loader, criterion, pruned=False, evaluate_flatness=evaluate_flatness, eval_batches=eval_batches, light=not evaluate_flatness)
     # log metrics to TensorBoard
     for name, value in eval_metrics.items():
         if value is not None:
@@ -196,11 +197,15 @@ def train_prune_loop(
                 print(f"  Test {name}: {value:.4f}")
 
     iter_ratio = 1 - (1 - prune_ratio) ** (1 / n_iter)
-    #iter_epochs = epochs // n_iter
+    prune_count = 0
 
     for epoch in range(1, epochs + 1):
-        #if epoch == first_iter or ((epoch - 1) % iter_epochs == 0 and epoch != 1):
-        if epoch >= first_iter and (epoch - first_iter) % prune_every == 0:
+        if (
+            epoch >= first_iter
+            and (epoch - first_iter) % prune_every == 0
+            and prune_count < n_iter
+        ):
+            prune_count += 1
             print(f"Pruning iteration at epoch {epoch}: pruning additional {iter_ratio*100:.2f}% of weights.")
             parameters_to_prune = [(module, 'weight') for _, module in model.named_modules() if isinstance(module, (nn.Linear, nn.Conv2d))]
             prune.global_unstructured(
@@ -234,8 +239,8 @@ def train_prune_loop(
             train_metrics = train_epoch(model, device, train_loader, SAM_optimizer, epoch, criterion, log_every=log_every)
         #train_metrics = evaluate(model, device, train_loader, criterion)
         evaluate_flatness = epoch % evaluate_flatness_every == 0
-        eval_metrics = evaluate(model, device, test_loader, criterion, pruned=False, #=epoch>=first_iter, 
-                                evaluate_flatness=evaluate_flatness)
+        eval_metrics = evaluate(model, device, test_loader, criterion, pruned=(epoch >= first_iter),
+                                evaluate_flatness=evaluate_flatness, eval_batches=eval_batches, light=not evaluate_flatness)
 
         # log metrics
         for name, value in train_metrics.items():

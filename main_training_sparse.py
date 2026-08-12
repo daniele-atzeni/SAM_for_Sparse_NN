@@ -1,13 +1,15 @@
 """Sparse training: train with iterative pruning during training.
 
 Usage:
-    python main_training_sparse.py --config configs/sparse/MLP_MNIST_config.json
+    python main_training_sparse.py --config configs/sparse/ResNet18_CIFAR10_s0.9.json --seed 0
 """
 
 import argparse
 import json
 import os
+import random
 
+import numpy as np
 import torch
 
 from src.registry import (
@@ -18,6 +20,13 @@ from src.registry import (
     build_optimizers,
 )
 from src.train.training import train_prune_loop
+
+
+def set_seed(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
 
 
 def main():
@@ -32,7 +41,20 @@ def main():
         default=["True", "False"],
         help="Which SAM settings to run, e.g. --use-sam True False",
     )
+    parser.add_argument(
+        "--seed", type=int, default=0, help="Random seed for init/data ordering"
+    )
+    parser.add_argument(
+        "--save-every",
+        type=int,
+        default=None,
+        help="Override config's save_every (checkpoint frequency in epochs). "
+        "Pass a small value (e.g. equal to prune_every) to keep every "
+        "pruning-round checkpoint for this run; leave unset for final-only.",
+    )
     args = parser.parse_args()
+
+    set_seed(args.seed)
 
     config = json.load(open(args.config))
     use_sam_list = [s.lower() == "true" for s in args.use_sam]
@@ -55,27 +77,15 @@ def main():
     model_params = config["model"]["parameters"]
     model = build_model(model_name, model_params)
 
-    # ---- Save paths ----
+    # ---- Save paths (seed-scoped so parallel seeds never collide) ----
     save_dir = os.path.join(
         "saved_models",
         "sparse",
         f"{model_name}_{dataset_name}_prune_ratio_{prune_ratio}",
+        f"seed_{args.seed}",
     )
     checkpoint_dir = os.path.join(save_dir, "checkpoint")
     os.makedirs(checkpoint_dir, exist_ok=True)
-
-    # Try to load matching dense initialisation for a fair comparison
-    dense_init_path = os.path.join(
-        "saved_models",
-        "dense",
-        f"{model_name}_{dataset_name}",
-        f"{model_name}_{dataset_name}_initial.pth",
-    )
-    if os.path.exists(dense_init_path):
-        print(f"Loading initial weights from {dense_init_path}")
-        model.load_state_dict(torch.load(dense_init_path, map_location="cpu"))
-    else:
-        print(f"No dense initialisation found at {dense_init_path}; using random init")
 
     initial_path = os.path.join(
         save_dir, f"{model_name}_{dataset_name}_initial.pth"
@@ -86,24 +96,29 @@ def main():
     learning_rate = config["training"]["learning_rate"]
     criterion = build_criterion(config["training"]["loss_function"])
     scheduler = build_scheduler(config, learning_rate)
+    evaluate_flatness_every = config.get("evaluate_flatness_every", 10)
+    eval_batches = config.get("eval_batches")
+    save_every = args.save_every if args.save_every is not None else config.get("save_every", epochs + 1)
 
     tb_root = os.path.join(
         "tensorboard",
         "runs_sparse",
         f"{model_name}_{dataset_name}_prune_ratio_{prune_ratio}",
+        f"seed_{args.seed}",
     )
 
     for use_sam in use_sam_list:
         print(
             f"\n{'='*60}\n"
             f"Training {model_name} on {dataset_name} | SAM: {use_sam} | "
-            f"Prune ratio: {prune_ratio}\n"
+            f"Prune ratio: {prune_ratio} | Seed: {args.seed}\n"
             f"{'='*60}"
         )
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        # Re-create model from scratch to guarantee a clean state
+        # Re-create model from scratch to guarantee a clean state, loading
+        # the SAME initial weights for both SAM and SGD (fair comparison).
         model = build_model(model_name, model_params)
         model.load_state_dict(torch.load(initial_path, map_location="cpu"))
         model = model.to(device)
@@ -123,11 +138,13 @@ def main():
             scheduler=scheduler,
             tensorboard_log_dir=os.path.join(tb_root, f"SAM_{use_sam}"),
             checkpoint_folder=checkpoint_dir,
-            save_every=config.get("save_every", epochs + 1),
+            save_every=save_every,
             first_iter=first_iter,
             prune_every=prune_every,
             prune_ratio=prune_ratio,
             n_iter=n_iter,
+            evaluate_flatness_every=evaluate_flatness_every,
+            eval_batches=eval_batches,
         )
 
         final_path = os.path.join(
