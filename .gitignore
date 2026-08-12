@@ -19,6 +19,7 @@ checkpoint/
 tensorboard/
 results/
 output/
+logs/
 *.pth
 *.pt
 

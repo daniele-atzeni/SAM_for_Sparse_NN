@@ -33,13 +33,19 @@ CONFIGS=(
 )
 
 for config in "${CONFIGS[@]}"; do
+  name="$(basename "$config" .json)"
+  log_dir="logs/sparse/$name"
+  mkdir -p "$log_dir"
   for seed in "${SEEDS[@]}"; do
-    echo "=== sparse: $config | seed $seed ==="
+    log_file="$log_dir/seed_${seed}.log"
+    echo "=== sparse: $config | seed $seed | log: $log_file ==="
     if [ "$seed" -eq "$FULL_CKPT_SEED" ]; then
       python main_training_sparse.py --config "$config" --seed "$seed" \
-        --save-every "$FULL_CKPT_SAVE_EVERY"
+        --save-every "$FULL_CKPT_SAVE_EVERY" \
+        2>&1 | tee "$log_file"
     else
-      python main_training_sparse.py --config "$config" --seed "$seed"
+      python main_training_sparse.py --config "$config" --seed "$seed" \
+        2>&1 | tee "$log_file"
     fi
   done
 done

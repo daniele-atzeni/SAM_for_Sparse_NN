@@ -24,8 +24,13 @@ ARCH_CONFIGS=(
 )
 
 for config in "${ARCH_CONFIGS[@]}"; do
+  name="$(basename "$config" .json)"
+  log_dir="logs/dense/$name"
+  mkdir -p "$log_dir"
   for seed in "${SEEDS[@]}"; do
-    echo "=== dense: $config | seed $seed ==="
-    python main_training_dense.py --config "$config" --seed "$seed"
+    log_file="$log_dir/seed_${seed}.log"
+    echo "=== dense: $config | seed $seed | log: $log_file ==="
+    python main_training_dense.py --config "$config" --seed "$seed" \
+      2>&1 | tee "$log_file"
   done
 done
