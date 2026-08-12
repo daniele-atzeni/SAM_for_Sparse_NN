@@ -28,6 +28,6 @@
     "prune_every": 10,
     "prune_ratio": 0.9,
     "n_iter": 5,
-    "evaluate_flatness_every": 20,
+    "evaluate_flatness_every": 5,
     "eval_batches": 10
 }

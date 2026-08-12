@@ -6,8 +6,8 @@
 #
 # Usage:
 #   bash scripts/run_dense.sh [seeds...]
-#   bash scripts/run_dense.sh            # defaults to seeds 0 1 2
-#   bash scripts/run_dense.sh 0           # just seed 0
+#   bash scripts/run_dense.sh            # defaults to seeds 13 42 97
+#   bash scripts/run_dense.sh 13          # just seed 13
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -15,7 +15,7 @@ cd "$(dirname "$0")/.."
 if [ "$#" -gt 0 ]; then
   SEEDS=("$@")
 else
-  SEEDS=(0 1 2)
+  SEEDS=(13 42 97)
 fi
 
 ARCH_CONFIGS=(

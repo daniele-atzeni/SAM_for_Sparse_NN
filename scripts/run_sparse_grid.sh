@@ -3,27 +3,26 @@
 # Each invocation of main_training_sparse.py trains BOTH SAM and SGD from the
 # same random init for that (arch, sparsity, seed) cell (fair comparison).
 #
-# Checkpoint policy: seed 0 keeps a checkpoint at every pruning round
-# (--save-every = prune_every from the configs, currently 10); seeds 1 and 2
-# only keep the final model, to avoid filling the disk with near-duplicate
-# checkpoints across seeds. Adjust FULL_CKPT_SAVE_EVERY below if you change
-# prune_every in the configs.
+# Checkpoint policy: FULL_CKPT_SEED keeps a checkpoint every 5 epochs
+# (finer than the 10-epoch pruning cadence, so it also catches mid-recovery
+# state between rounds); the other two seeds only keep the final model, to
+# avoid filling the disk with near-duplicate checkpoints across seeds.
 #
 # Usage:
 #   bash scripts/run_sparse_grid.sh
-#   bash scripts/run_sparse_grid.sh 0        # just seed 0 (with full checkpoints)
-#   bash scripts/run_sparse_grid.sh 1 2      # just seeds 1 and 2 (final-only)
+#   bash scripts/run_sparse_grid.sh 13        # just seed 13 (with full checkpoints)
+#   bash scripts/run_sparse_grid.sh 42 97     # just seeds 42 and 97 (final-only)
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-FULL_CKPT_SEED=0
-FULL_CKPT_SAVE_EVERY=10
+FULL_CKPT_SEED=13
+FULL_CKPT_SAVE_EVERY=5
 
 if [ "$#" -gt 0 ]; then
   SEEDS=("$@")
 else
-  SEEDS=(0 1 2)
+  SEEDS=(13 42 97)
 fi
 
 CONFIGS=(
