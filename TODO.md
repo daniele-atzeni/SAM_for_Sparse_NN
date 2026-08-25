@@ -5,8 +5,21 @@ doesn't get lost.
 
 ## Experiment grid
 
-- [ ] Add more sparsity levels beyond 0.7/0.9 — e.g. 0.5, 0.95 — once the
-      current grid's cost/runtime is known.
+- [x] Add more sparsity levels beyond 0.7/0.9 — s=0.95/0.98/0.99 added in
+      `configs/sparse/{ResNet18,VGG16}_CIFAR10_s{0.95,0.98,0.99}.json`,
+      runnable via `scripts/run_sparse_grid_strong.sh`. First pass at
+      0.7/0.9 showed little SAM-vs-SGD / dense-vs-sparse divergence, even
+      in the training trajectories, not just final accuracy — plausible
+      cause: pruning finishes at epoch 55 out of 180, leaving 125 epochs
+      (69%) of recovery, which is the regime where trajectory differences
+      are expected to wash out before final accuracy is measured (matches
+      the "generous recovery" discussion in `archive/rebuttal`, Table 6).
+      This sweep holds the schedule fixed and only pushes sparsity, to
+      check whether that alone is enough.
+- [ ] If the strong-pruning sweep still shows little divergence, the next
+      lever to try is shortening the recovery budget itself (extend
+      pruning closer to epoch 180 instead of finishing at epoch 55) rather
+      than pushing sparsity further — not yet configured.
 - [ ] Add a transformer architecture (ViT is already in `src/models/`,
       wire up a `configs/sparse/ViT_CIFAR10_s*.json` once ResNet/VGG results
       are in).
