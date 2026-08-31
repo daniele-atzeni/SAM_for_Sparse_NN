@@ -16,10 +16,34 @@ doesn't get lost.
       the "generous recovery" discussion in `archive/rebuttal`, Table 6).
       This sweep holds the schedule fixed and only pushes sparsity, to
       check whether that alone is enough.
-- [ ] If the strong-pruning sweep still shows little divergence, the next
-      lever to try is shortening the recovery budget itself (extend
-      pruning closer to epoch 180 instead of finishing at epoch 55) rather
-      than pushing sparsity further — not yet configured.
+- [x] Strong-pruning sweep (s=0.95/0.98/0.99) completed, 36/36 runs, no
+      errors. Result: Hessian trace is consistently lower for SAM than SGD
+      (3–10x, both architectures, all sparsities — the one fully robust
+      finding), and SAM shows a visibly smaller/faster-recovering accuracy
+      dip right after the later pruning rounds (epoch 45/55) than SGD. But
+      **final accuracy at epoch 180 stays statistically indistinguishable
+      between SAM/SGD at every sparsity level** — confirms the "generous
+      recovery washes out trajectory differences" account rather than
+      refuting it. Also checked training accuracy specifically: SGD still
+      reaches ~99-100% at every sparsity up to 0.99 for both architectures,
+      meaning the network is still comfortably over-parameterized (can
+      still fully memorize the 50k-image training set) even at s=0.99 —
+      SAM's lower/declining train accuracy there is its own implicit
+      regularization, not a capacity ceiling (confirmed since SGD at the
+      same sparsity doesn't show the same ceiling).
+- [ ] Two follow-ups now configured, not yet run:
+      1. **Recovery-budget variant** — `configs/sparse/{ResNet18,VGG16}_CIFAR10_s0.9_shortrecovery.json`
+         + `scripts/run_sparse_recovery_budget.sh`. Same s=0.9, but pruning
+         spread over 11 rounds every 15 epochs (epochs 15-165), leaving
+         only 15 epochs of recovery instead of 125. Isolates the recovery-
+         budget variable while holding sparsity fixed.
+      2. **Capacity-wall sweep** — `configs/sparse/{ResNet18,VGG16}_CIFAR10_s{0.995,0.999,0.9995}.json`
+         + `scripts/run_sparse_grid_extreme.sh`. Same schedule as the
+         original grid (125 epochs recovery), pushing sparsity to where
+         active-parameter counts approach/fall below the 50k-image
+         training set (down to ~5.6k active for ResNet18, ~16.8k for
+         VGG16 at s=0.9995), looking for where SGD's own *training*
+         accuracy finally drops — the real under-parameterized signature.
 - [ ] Add a transformer architecture (ViT is already in `src/models/`,
       wire up a `configs/sparse/ViT_CIFAR10_s*.json` once ResNet/VGG results
       are in).
