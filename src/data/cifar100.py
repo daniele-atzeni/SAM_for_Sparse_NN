@@ -25,7 +25,7 @@ class Cutout:
         return image
 
 
-def load(root: str = "../data",
+def load(root: str = "./src/data/DATA",
          normalize: bool=True,
          randomize: bool=True,
          cutout: bool=False) -> Tuple[Dataset, Dataset]:

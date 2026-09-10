@@ -31,19 +31,30 @@ doesn't get lost.
       SAM's lower/declining train accuracy there is its own implicit
       regularization, not a capacity ceiling (confirmed since SGD at the
       same sparsity doesn't show the same ceiling).
-- [ ] Two follow-ups now configured, not yet run:
-      1. **Recovery-budget variant** — `configs/sparse/{ResNet18,VGG16}_CIFAR10_s0.9_shortrecovery.json`
-         + `scripts/run_sparse_recovery_budget.sh`. Same s=0.9, but pruning
-         spread over 11 rounds every 15 epochs (epochs 15-165), leaving
-         only 15 epochs of recovery instead of 125. Isolates the recovery-
-         budget variable while holding sparsity fixed.
-      2. **Capacity-wall sweep** — `configs/sparse/{ResNet18,VGG16}_CIFAR10_s{0.995,0.999,0.9995}.json`
-         + `scripts/run_sparse_grid_extreme.sh`. Same schedule as the
-         original grid (125 epochs recovery), pushing sparsity to where
-         active-parameter counts approach/fall below the 50k-image
-         training set (down to ~5.6k active for ResNet18, ~16.8k for
-         VGG16 at s=0.9995), looking for where SGD's own *training*
-         accuracy finally drops — the real under-parameterized signature.
+- [x] Recovery-budget variant (`s0.9_shortrecovery`, 6/6 runs) and
+      capacity-wall sweep (`s{0.995,0.999,0.9995}`, 18/18 runs) both
+      completed, no errors. Recovery-budget is the one condition in the
+      whole campaign where final accuracy itself moved in SAM's favor,
+      consistently: +0.9pp mean, SAM ahead in 5/6 seed×architecture cells
+      (vs. a coin flip at the same s=0.9 under generous recovery). The
+      capacity-wall sweep found both optimizers collapse together between
+      s=0.995→0.999 (ResNet18) / s=0.999→0.9995 (VGG16) — walls align by
+      *absolute* active-parameter count (~10-30k) rather than sparsity
+      fraction or architecture, and it's a shared capacity limit, not a
+      SAM-vs-SGD effect. One anomaly: at VGG16 s=0.9995 the otherwise
+      universal SAM<SGD trace ordering reverses in 2/3 seeds — not yet
+      explained (see full write-up artifact for everything, published
+      2026-09-10).
+- [ ] **CIFAR-100 replication** — `configs/sparse/{ResNet18,VGG16}_CIFAR100_s0.9_shortrecovery.json`
+      + `scripts/run_sparse_cifar100.sh`, not yet run. Same short-recovery
+      schedule/sparsity as the CIFAR-10 result that showed the +0.9pp gap
+      — testing whether a harder task (100 classes, 500 images/class
+      instead of 10 classes/5,000 images/class, lower achievable ceiling)
+      makes the effect bigger, given it's recovery-budget-dependent. Also
+      fixed a real bug found while setting this up: `src/data/cifar100.py`
+      defaulted its download root to `../data` instead of
+      `./src/data/DATA` like every other dataset loader — would have
+      scattered the download outside the repo.
 - [ ] Add a transformer architecture (ViT is already in `src/models/`,
       wire up a `configs/sparse/ViT_CIFAR10_s*.json` once ResNet/VGG results
       are in).
