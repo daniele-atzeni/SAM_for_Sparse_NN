@@ -77,11 +77,19 @@ def main():
     model_params = config["model"]["parameters"]
     model = build_model(model_name, model_params)
 
-    # ---- Save paths (seed-scoped so parallel seeds never collide) ----
+    # ---- Save paths ----
+    # Tagged by the config file's own name (not just prune_ratio) and seed,
+    # so two configs that share a prune_ratio but differ in schedule (e.g.
+    # first_iter/prune_every/n_iter) never collide on the same checkpoint
+    # filenames -- prune_ratio alone caused exactly that collision between
+    # the generous-recovery, short-recovery, and aggressive-steps configs,
+    # which all use prune_ratio=0.9 and silently overwrote each other's
+    # saved_models/tensorboard output.
+    config_tag = os.path.splitext(os.path.basename(args.config))[0]
     save_dir = os.path.join(
         "saved_models",
         "sparse",
-        f"{model_name}_{dataset_name}_prune_ratio_{prune_ratio}",
+        config_tag,
         f"seed_{args.seed}",
     )
     checkpoint_dir = os.path.join(save_dir, "checkpoint")
@@ -103,7 +111,7 @@ def main():
     tb_root = os.path.join(
         "tensorboard",
         "runs_sparse",
-        f"{model_name}_{dataset_name}_prune_ratio_{prune_ratio}",
+        config_tag,
         f"seed_{args.seed}",
     )
 

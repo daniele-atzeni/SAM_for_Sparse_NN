@@ -66,9 +66,14 @@ def main():
     model_params = config["model"]["parameters"]
     model = build_model(model_name, model_params)
 
-    # ---- Save paths (seed-scoped so parallel seeds never collide) ----
+    # ---- Save paths ----
+    # Tagged by the config file's own name (not just model+dataset), so two
+    # configs for the same model/dataset with different hyperparameters
+    # never collide on the same checkpoint filenames (see the matching fix
+    # in main_training_sparse.py for why this matters).
+    config_tag = os.path.splitext(os.path.basename(args.config))[0]
     save_dir = os.path.join(
-        "saved_models", "dense", f"{model_name}_{dataset_name}", f"seed_{args.seed}"
+        "saved_models", "dense", config_tag, f"seed_{args.seed}"
     )
     checkpoint_dir = os.path.join(save_dir, "checkpoint")
     os.makedirs(checkpoint_dir, exist_ok=True)
@@ -85,7 +90,7 @@ def main():
     scheduler = build_scheduler(config, learning_rate)
 
     tb_root = os.path.join(
-        "tensorboard", "runs_dense", f"{model_name}_{dataset_name}", f"seed_{args.seed}"
+        "tensorboard", "runs_dense", config_tag, f"seed_{args.seed}"
     )
 
     for use_sam in use_sam_list:
