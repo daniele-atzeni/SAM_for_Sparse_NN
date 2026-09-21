@@ -56,7 +56,12 @@ HESSIAN_BATCH_SIZE = 256
 HESSIAN_MAX_ITER = 30
 # Round boundaries are expensive (Hessian power iteration); gradient norm is
 # cheap (one backward pass) so we compute it at every saved checkpoint.
-ROUND_EPOCHS = [15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165]
+# Also cover every intermediate checkpoint within the last two round windows
+# (135-165) at fine (5-epoch) resolution, to check whether lambda1 itself
+# relaxes within the 15-epoch recovery window or stays elevated throughout --
+# the question that determines whether the bottleneck is the per-step
+# contraction rate (fast, sub-epoch) or lambda1's own post-cut dynamics.
+ROUND_EPOCHS = [15, 30, 45, 60, 75, 90, 105, 120, 135, 140, 145, 150, 155, 160, 165]
 
 
 def get_big_batch(loader, device, n):
