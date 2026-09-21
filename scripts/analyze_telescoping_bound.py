@@ -49,6 +49,10 @@ from src.pyhessian.hessian import hessian
 from src.eval.eval import masked_grad_norm
 
 GRAD_BATCH_SIZE = 2048
+# Hessian-vector products need create_graph=True, which is far more
+# memory-hungry than a plain backward pass -- a batch that's fine for the
+# gradient norm OOMs here, so this step uses a smaller slice of it.
+HESSIAN_BATCH_SIZE = 256
 HESSIAN_MAX_ITER = 30
 # Round boundaries are expensive (Hessian power iteration); gradient norm is
 # cheap (one backward pass) so we compute it at every saved checkpoint.
@@ -140,7 +144,9 @@ def main():
 
             if epoch in ROUND_EPOCHS:
                 cuda = device.type == "cuda"
-                hessian_comp = hessian(model, criterion, data=(big_data, big_target), cuda=cuda)
+                hess_data = big_data[:HESSIAN_BATCH_SIZE]
+                hess_target = big_target[:HESSIAN_BATCH_SIZE]
+                hessian_comp = hessian(model, criterion, data=(hess_data, hess_target), cuda=cuda)
                 eigvals, _ = hessian_comp.pruned_eigenvalues(top_n=1, maxIter=HESSIAN_MAX_ITER)
                 lambda1 = eigvals[0]
                 eta_lambda1 = eta * lambda1
@@ -152,12 +158,17 @@ def main():
                     f"grad_norm={grad_norm:10.4f}  lambda1={lambda1:10.2f}  "
                     f"beta1_pred={beta1_pred:10.4f}"
                 )
+                del hessian_comp, eigvals, hess_data, hess_target
             else:
                 print(f"  SAM={use_sam_str} epoch={epoch:3d}  active={active:>9,d}  grad_norm={grad_norm:10.4f}")
 
             results[use_sam_str].append(row)
             with open(out_path, "w") as f:
                 json.dump(results, f, indent=2)
+
+            del model, out, loss
+            if device.type == "cuda":
+                torch.cuda.empty_cache()
 
     print(f"\nSaved to {out_path}")
 
