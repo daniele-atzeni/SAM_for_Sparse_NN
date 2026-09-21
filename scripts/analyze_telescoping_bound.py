@@ -33,6 +33,12 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
+
+# Running this as `python scripts/analyze_telescoping_bound.py` only puts
+# scripts/ on sys.path, not the repo root -- add the root explicitly so
+# `from src...` resolves regardless of where this is invoked from.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import torch
 import torch.nn as nn
