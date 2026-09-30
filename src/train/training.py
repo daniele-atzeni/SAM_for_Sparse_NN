@@ -95,7 +95,8 @@ def train_loop(
         checkpoint_folder: str = "./checkpoint",
         save_every: int = 100,
         evaluate_flatness_every: int = 10,
-        eval_batches: int = None
+        eval_batches: int = None,
+        pruned: bool = False
         ):
 
     assert use_sam and SAM_optimizer is not None or not use_sam and SGD_optimizer is not None, \
@@ -105,7 +106,7 @@ def train_loop(
 
     # evaluate before training
     evaluate_flatness = evaluate_flatness_every == 1
-    eval_metrics = evaluate(model, device, test_loader, criterion, evaluate_flatness=evaluate_flatness, eval_batches=eval_batches, light=not evaluate_flatness)
+    eval_metrics = evaluate(model, device, test_loader, criterion, pruned=pruned, evaluate_flatness=evaluate_flatness, eval_batches=eval_batches, light=not evaluate_flatness)
     # log metrics to TensorBoard
     for name, value in eval_metrics.items():
         if value is not None:
@@ -123,7 +124,7 @@ def train_loop(
             train_metrics = train_epoch(model, device, train_loader, SAM_optimizer, epoch, criterion, log_every=log_every)
         #train_metrics = evaluate(model, device, train_loader, criterion)
         evaluate_flatness = epoch % evaluate_flatness_every == 0
-        eval_metrics = evaluate(model, device, test_loader, criterion, evaluate_flatness=evaluate_flatness, eval_batches=eval_batches, light=not evaluate_flatness)
+        eval_metrics = evaluate(model, device, test_loader, criterion, pruned=pruned, evaluate_flatness=evaluate_flatness, eval_batches=eval_batches, light=not evaluate_flatness)
 
         # log metrics to TensorBoard
         for name, value in train_metrics.items():

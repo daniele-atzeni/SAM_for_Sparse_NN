@@ -25,3 +25,6 @@ logs/
 
 # Editor/IDE
 .claude/
+
+icml*
+figures/
