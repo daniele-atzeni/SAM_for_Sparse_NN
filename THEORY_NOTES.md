@@ -258,7 +258,8 @@ flagged as future work, not attempted further given time constraints.
   alignment than the `(k−r)/k` generic-direction baseline would predict
   (the Prop. 3.5 gap noted in §5) — a real open question in its own right,
   separate from what's above.
-- **Out of scope, stated as limitations rather than closed:** CIFAR-100,
-  a transformer architecture, an iso-compute comparison (SAM spends ~2× the
-  gradient computations of SGD per step; the current comparisons match
-  epoch count, not FLOPs).
+- **Done since this was written:** the iso-compute comparison (SGD given SAM's
+  FLOP budget) — gap closes at s=0.999, survives at s=0.9995, now in the paper.
+- **Out of scope, stated as limitations rather than closed:** CIFAR-100, a
+  transformer architecture, a stronger/adaptive-ρ SAM baseline, confirming
+  per-run wall-clock time on the actual server hardware.
