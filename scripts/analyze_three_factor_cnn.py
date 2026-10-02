@@ -59,33 +59,26 @@ def get_batch(loader, device, n):
     return torch.cat(xs)[:n].to(device), torch.cat(ys)[:n].to(device)
 
 
-def active_param_count(model):
-    n = 0
-    for module in model.modules():
-        for name, param in module.named_parameters(recurse=False):
-            if not param.requires_grad:
-                continue
-            base = name.replace("_orig", "")
-            mask_name = base.replace("weight", "weight_mask").replace("bias", "bias_mask")
-            mask = getattr(module, mask_name, None)
-            n += int(mask.sum().item()) if mask is not None else param.numel()
-    return n
+def prunable_weights(model):
+    """Conv/Linear weights -- the same parameter set magnitude pruning acts
+    on, so s_bar_J and delta live on the same coordinates."""
+    return [m.weight for m in model.modules() if isinstance(m, (nn.Linear, nn.Conv2d))]
 
 
 def s_bar_J(model, data, n_hutchinson=N_HUTCHINSON):
     """Hutchinson estimate of tr(J^T J) / p for the restricted Jacobian,
     via VJPs only (random linear combinations of the stacked logits)."""
-    p = active_param_count(model)
+    model.eval()  # BN must use running stats, as at deployment
+    weights = prunable_weights(model)
+    p = sum(w.numel() for w in weights)
+    gen = torch.Generator(device=data.device).manual_seed(0)
     total = 0.0
     for _ in range(n_hutchinson):
         model.zero_grad()
         out = model(data)  # [batch, C]
-        u = torch.randint(0, 2, out.shape, device=out.device, dtype=out.dtype) * 2 - 1  # Rademacher
+        u = torch.randint(0, 2, out.shape, device=out.device, generator=gen).to(out.dtype) * 2 - 1  # Rademacher
         (u * out).sum().backward()
-        sq_norm = 0.0
-        for param in model.parameters():
-            if param.grad is not None:
-                sq_norm += param.grad.pow(2).sum().item()
+        sq_norm = sum(w.grad.pow(2).sum().item() for w in weights)
         total += sq_norm
     model.zero_grad()
     return (total / n_hutchinson) / p, p
@@ -110,6 +103,8 @@ def delta_sq_norm(dense_state, pruned_model):
 
 @torch.no_grad()
 def delta_f_sq_norm(dense_model, pruned_model, data):
+    dense_model.eval()
+    pruned_model.eval()
     f_dense = dense_model(data)
     f_pruned = pruned_model(data)
     return (f_pruned - f_dense).pow(2).sum().item()
@@ -139,8 +134,10 @@ def main():
     dataset_name = config["dataset"]["name"]
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    train_loader, _ = build_dataloaders(dataset_name, BATCH_SIZE)
-    data, _ = get_batch(train_loader, device, BATCH_SIZE)
+    # Fixed, unaugmented batch (test loader: shuffle=False) so every run and
+    # every checkpoint is evaluated on exactly the same inputs.
+    _, test_loader = build_dataloaders(dataset_name, BATCH_SIZE)
+    data, _ = get_batch(test_loader, device, BATCH_SIZE)
 
     dense_dir = os.path.join("saved_models", "dense", args.dense_tag, f"seed_{args.seed}")
     results = {"s_bar_J": {}, "active_params": {}, "per_sparsity": {}}
