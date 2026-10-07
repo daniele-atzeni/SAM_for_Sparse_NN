@@ -110,8 +110,16 @@ def main():
     model_params = config["model"]["parameters"]
     dataset_name = config["dataset"]["name"]
     batch_size = config["dataset"]["batch_size"]
-    eta = config["training"]["learning_rate"]
+    base_lr = config["training"]["learning_rate"]
+    sched = config["training"].get("scheduler", {})
+    milestones = sched.get("step_size", [])
+    gamma = sched.get("gamma", 1.0)
     rho = config["training"]["rho"]
+
+    def lr_at(epoch):
+        # MultiStepLR: the step size actually in effect at this epoch, not the
+        # base rate -- eta*lambda1 must use the decayed LR after each milestone.
+        return base_lr * gamma ** sum(epoch >= m for m in milestones)
 
     config_tag = os.path.splitext(os.path.basename(args.config))[0]
     ckpt_dir = os.path.join(
@@ -154,9 +162,12 @@ def main():
                 hessian_comp = hessian(model, criterion, data=(hess_data, hess_target), cuda=cuda)
                 eigvals, _ = hessian_comp.pruned_eigenvalues(top_n=1, maxIter=HESSIAN_MAX_ITER)
                 lambda1 = eigvals[0]
+                eta = lr_at(epoch)
                 eta_lambda1 = eta * lambda1
                 beta1_pred = (eta * rho * lambda1 ** 2) / max(2 - eta_lambda1, 1e-6)
                 row["lambda1"] = lambda1
+                row["lr"] = eta
+                row["eta_lambda1"] = eta_lambda1
                 row["beta1_pred"] = beta1_pred
                 print(
                     f"  SAM={use_sam_str} epoch={epoch:3d}  active={active:>9,d}  "

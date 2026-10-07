@@ -66,6 +66,13 @@ def main():
     prune_ratio = config.get("prune_ratio", 0.5)
     default_n_iter = (epochs - first_iter) // prune_every
     n_iter = config.get("n_iter", default_n_iter)
+    # Optional fixed per-layer allocation (one list of per-layer active
+    # counts per pruning round) instead of a global magnitude threshold.
+    allocation = None
+    if config.get("allocation_file"):
+        with open(config["allocation_file"]) as f:
+            allocation = json.load(f)["rounds"]
+        assert len(allocation) == n_iter, "allocation must give one entry per pruning round"
 
     # ---- Dataset ----
     dataset_name = config["dataset"]["name"]
@@ -153,6 +160,7 @@ def main():
             n_iter=n_iter,
             evaluate_flatness_every=evaluate_flatness_every,
             eval_batches=eval_batches,
+            allocation=allocation,
         )
 
         final_path = os.path.join(

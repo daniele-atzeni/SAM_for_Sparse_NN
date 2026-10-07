@@ -177,6 +177,7 @@ def train_prune_loop(
         first_epoch: int = 0,
         evaluate_flatness_every: int = 1,
         eval_batches: int = None,
+        allocation: list | None = None,
         ):
 
     assert use_sam and SAM_optimizer is not None or not use_sam and SGD_optimizer is not None, \
@@ -207,13 +208,28 @@ def train_prune_loop(
             and prune_count < n_iter
         ):
             prune_count += 1
-            print(f"Pruning iteration at epoch {epoch}: pruning additional {iter_ratio*100:.2f}% of weights.")
             parameters_to_prune = [(module, 'weight') for _, module in model.named_modules() if isinstance(module, (nn.Linear, nn.Conv2d))]
-            prune.global_unstructured(
-                parameters_to_prune,
-                pruning_method=prune.L1Unstructured,
-                amount=iter_ratio,
-            )   # change model in-place
+            if allocation is None:
+                print(f"Pruning iteration at epoch {epoch}: pruning additional {iter_ratio*100:.2f}% of weights.")
+                prune.global_unstructured(
+                    parameters_to_prune,
+                    pruning_method=prune.L1Unstructured,
+                    amount=iter_ratio,
+                )   # change model in-place
+            else:
+                # Fixed per-layer allocation: layer l keeps exactly
+                # allocation[round][l] weights, the largest by magnitude
+                # within that layer, so every optimizer gets the same
+                # layer-wise budget instead of a global threshold.
+                counts = allocation[prune_count - 1]
+                print(f"Pruning iteration at epoch {epoch}: fixed allocation, keeping {sum(counts)} weights.")
+                with torch.no_grad():
+                    for (module, _), keep in zip(parameters_to_prune, counts):
+                        w = module.weight.detach().abs().flatten()
+                        mask = torch.zeros_like(w)
+                        if keep > 0:
+                            mask[torch.topk(w, min(int(keep), w.numel())).indices] = 1.0
+                        prune.custom_from_mask(module, 'weight', mask.view_as(module.weight))
             # compute sparsity
             print(f"Global sparsity after pruning at epoch {epoch}:")
             total_zeros = 0

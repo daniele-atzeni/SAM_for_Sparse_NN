@@ -12,6 +12,10 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
+
+def _no_suptitle(*args, **kwargs):
+    """Paper figures carry no in-figure title; the LaTeX caption describes them."""
+
 SAM_COLOR = "#0B8A73"
 SGD_COLOR = "#C1571E"
 ROUND_EPOCHS = [15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165]
@@ -71,7 +75,7 @@ for name, configs in GROUPS:
         style_axes(ax)
     axes[0].set_ylabel(r"$L_{\mathrm{SAM}}$ (log scale)")
     axes[0].legend(frameon=False, loc="upper left", fontsize=10)
-    fig.suptitle(
+    _no_suptitle(
         r"Sharpness diagnostic ($L_{\mathrm{SAM}}$) through training" + "\n"
         "(mean ± std across 3 seeds; dashed lines mark pruning rounds)",
         fontsize=11.5, y=0.99,

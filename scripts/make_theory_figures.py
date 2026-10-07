@@ -18,6 +18,10 @@ import os
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 
+
+def _no_suptitle(*args, **kwargs):
+    """Paper figures carry no in-figure title; the LaTeX caption describes them."""
+
 SAM_COLOR = "#0B8A73"
 SGD_COLOR = "#C1571E"
 ROUND_EPOCHS = [15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165]
@@ -55,8 +59,8 @@ def mark_round(ax, epoch):
 fig, axes = plt.subplots(1, 2, figsize=(10.5, 4.3), sharey=True)
 
 configs = [
-    ("ResNet18_CIFAR10_s0.995_shortrecovery", "ResNet18, s = 0.995"),
-    ("ResNet18_CIFAR10_s0.999_shortrecovery", "ResNet18, s = 0.999"),
+    ("ResNet18_CIFAR10_s0.995_shortrecovery", "ResNet-18, s = 0.995"),
+    ("ResNet18_CIFAR10_s0.999_shortrecovery", "ResNet-18, s = 0.999"),
 ]
 
 for ax, (name, title) in zip(axes, configs):
@@ -79,7 +83,7 @@ for ax, (name, title) in zip(axes, configs):
 axes[0].set_ylabel(r"$\lambda_1(H_m)$ (log scale)")
 axes[0].legend(frameon=False, loc="upper left", fontsize=10)
 
-fig.suptitle(
+_no_suptitle(
     "Within-round curvature relaxation: SAM settles, SGD often doesn't\n"
     "(dashed lines = pruning rounds 9/10/11, epochs 135/150/165 — each gets a 15-epoch recovery window)",
     fontsize=11,
@@ -98,8 +102,8 @@ plt.close(fig)
 fig, axes = plt.subplots(2, 2, figsize=(11, 8), sharex=True)
 
 configs2 = [
-    ("ResNet18_CIFAR10_s0.995_shortrecovery", "ResNet18, s = 0.995"),
-    ("ResNet18_CIFAR10_s0.999_shortrecovery", "ResNet18, s = 0.999"),
+    ("ResNet18_CIFAR10_s0.995_shortrecovery", "ResNet-18, s = 0.995"),
+    ("ResNet18_CIFAR10_s0.999_shortrecovery", "ResNet-18, s = 0.999"),
     ("VGG16_CIFAR10_s0.999_shortrecovery", "VGG16, s = 0.999"),
     ("VGG16_CIFAR10_s0.9995_shortrecovery", "VGG16, s = 0.9995"),
 ]
@@ -122,14 +126,14 @@ for ax in axes[:, 0]:
     ax.set_ylabel(r"restricted grad. norm $\|P_m^T\nabla L\|$")
 
 axes[0, 0].legend(frameon=False, loc="upper right", fontsize=10)
-fig.suptitle(
+_no_suptitle(
     "Restricted gradient norm through training, tight-recovery schedule\n"
     "(vertical lines mark the 11 pruning rounds, every 15 epochs)",
     fontsize=12,
     y=0.985,
 )
 fig.tight_layout(rect=[0, 0, 1, 1.0])
-fig.subplots_adjust(top=0.86, hspace=0.32)
+fig.subplots_adjust(top=0.93, hspace=0.32)
 for ext in ("png", "pdf"):
     out2 = os.path.join(FIGURES_DIR, f"grad_norm_trajectory.{ext}")
     fig.savefig(out2, dpi=200)

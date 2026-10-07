@@ -22,6 +22,10 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
+
+def _no_suptitle(*args, **kwargs):
+    """Paper figures carry no in-figure title; the LaTeX caption describes them."""
+
 SAM_COLOR = "#0B8A73"
 SGD_COLOR = "#C1571E"
 GAP_COLOR = "#1F5FA6"
@@ -82,14 +86,14 @@ for ax, (config, title) in zip(axes, trace_configs):
 
 axes[0].set_ylabel(r"Hessian trace (log scale)")
 axes[0].legend(frameon=False, loc="upper right", fontsize=10)
-fig.suptitle(
+_no_suptitle(
     "SAM's flat-minima trace advantage holds throughout training\n"
     "(mean ± std across 3 seeds; dashed lines mark the 11 pruning rounds)",
     fontsize=11,
     y=0.985,
 )
 fig.tight_layout(rect=[0, 0, 1, 1.0])
-fig.subplots_adjust(top=0.83)
+fig.subplots_adjust(top=0.93)
 for ext in ("png", "pdf"):
     out = os.path.join(FIGURES_DIR, f"hessian_trace_curves.{ext}")
     fig.savefig(out, dpi=200)
