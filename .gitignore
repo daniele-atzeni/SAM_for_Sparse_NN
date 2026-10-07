@@ -26,13 +26,7 @@ logs/
 # Editor/IDE
 .claude/
 
-icml*
 figures/
-current_main.tex
-THEORY_NOTES.md
-TODO.md
-CHANGES.md
-neurips_revisions.txt
 
 # Notes, reports, unused figures and paper versions (kept locally, not tracked)
 note/
